@@ -131,7 +131,7 @@ class GoxSh(object):
         collapse_escapes = partial(re.compile(r"\\(.)", re.UNICODE).sub, "\\g<1>")
         self.__token_types = (
             ( # naked (unquoted)
-                re.compile(r"(?:\\[\s\\\"';]|[^\s\\\"';])+", re.UNICODE),
+                re.compile(r"(?:\\[\s\\\"';#]|[^\s\\\"';#])+", re.UNICODE),
                 collapse_escapes
             ),
             ( # double-quoted
@@ -142,8 +142,8 @@ class GoxSh(object):
                 re.compile(r"'(?:\\[\\']|[^\\])*?'", re.UNICODE),
                 lambda matched: collapse_escapes(matched[1:-1])
             ),
-            ( # whitespace
-                re.compile(r"\s+", re.UNICODE),
+            ( # whitespace and comments
+                re.compile(r"(?:\s|#.*)+", re.UNICODE),
                 lambda matched: None
             ),
             ( # semicolon

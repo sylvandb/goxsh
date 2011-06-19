@@ -15,6 +15,7 @@ Mt. Gox Shell — a command-line frontend to the Mt. Gox Bitcoin Exchange
 - Tab completion of commands
 - Sequence multiple commands using semicolons
 - Abort commands with SIGINT (ctrl-c on *nix) without exiting, if Mt. Gox is being slow
+- Insert comments (# blah) e.g. for quick notes
 
 ## Requirements
 
