@@ -131,7 +131,7 @@ class GoxSh(object):
         collapse_escapes = partial(re.compile(r"\\(.)", re.UNICODE).sub, "\\g<1>")
         self.__token_types = (
             ( # naked (unquoted)
-                re.compile(r"(?:\\[\s\\\"']|[^\s\\\"'])+", re.UNICODE),
+                re.compile(r"(?:\\[\s\\\"';]|[^\s\\\"';])+", re.UNICODE),
                 collapse_escapes
             ),
             ( # double-quoted
@@ -145,6 +145,10 @@ class GoxSh(object):
             ( # whitespace
                 re.compile(r"\s+", re.UNICODE),
                 lambda matched: None
+            ),
+            ( # semicolon
+                re.compile(r";", re.UNICODE),
+                lambda matched: matched
             )
         )
     
@@ -173,8 +177,13 @@ class GoxSh(object):
     def __parse_tokens(self, tokens):
         cmd = None
         args = []
-        for token in tokens:
-            if cmd == None:
+        for token in tokens:                
+            if token == u";":
+                if cmd != None:
+                    yield (cmd, args)
+                    cmd = None
+                    args = []
+            elif cmd == None:
                 cmd = token
             else:
                 args.append(token)
