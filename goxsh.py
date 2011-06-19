@@ -358,7 +358,11 @@ class GoxSh(object):
         if not username:
             while not username:
                 username = raw_input(u"Username: ").decode(self.__encoding)
-            readline.remove_history_item(readline.get_current_history_length() - 1)
+            try:
+                readline.remove_history_item(readline.get_current_history_length() - 1)
+            except AttributeError:
+                # Some systems lack remove_history_item
+                pass
         password = u""
         while not password:
             password = getpass.getpass()
