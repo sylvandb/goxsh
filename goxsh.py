@@ -2,6 +2,7 @@
 from contextlib import closing
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_DOWN, ROUND_UP
+from functools import partial
 import getpass
 import inspect
 import json
@@ -108,6 +109,9 @@ class MtGox(object):
         else:
             return data
 
+class TokenizationError(Exception):
+    pass
+
 class CommandError(Exception):
     pass
 
@@ -124,46 +128,101 @@ class GoxSh(object):
         self.__usd_precision = Decimal("0.00001")
         self.__usd_re = re.compile(r"^\$(\d*\.?\d+)$")
         self.__mtgox_commission = Decimal("0.0065")
+        collapse_escapes = partial(re.compile(r"\\(.)", re.UNICODE).sub, "\\g<1>")
+        self.__token_types = (
+            ( # naked (unquoted)
+                re.compile(r"(?:\\[\s\\\"']|[^\s\\\"'])+", re.UNICODE),
+                collapse_escapes
+            ),
+            ( # double-quoted
+                re.compile(r"\"(?:\\[\\\"]|[^\\])*?\"", re.UNICODE),
+                lambda matched: collapse_escapes(matched[1:-1])
+            ),
+            ( # single-quoted
+                re.compile(r"'(?:\\[\\']|[^\\])*?'", re.UNICODE),
+                lambda matched: collapse_escapes(matched[1:-1])
+            ),
+            ( # whitespace
+                re.compile(r"\s+", re.UNICODE),
+                lambda matched: None
+            )
+        )
+    
+    def __tokenize_command(self, line):
+        remaining = line
+        while remaining:
+            found = False
+            for (pattern, sub) in self.__token_types:
+                match = pattern.match(remaining)
+                if match:
+                    raw_token = match.group(0)
+                    assert len(raw_token) > 0, u"empty token"
+                    token = sub(raw_token)
+                    if token != None:
+                        yield token
+                    remaining = remaining[len(raw_token):]
+                    found = True
+                    break
+            if not found:
+                message = "\n".join((
+                    u"  %s^" % (u" " * (len(line) - len(remaining))),
+                    u"Syntax error."
+                ))
+                raise TokenizationError(message)
+    
+    def __parse_tokens(self, tokens):
+        cmd = None
+        args = []
+        for token in tokens:
+            if cmd == None:
+                cmd = token
+            else:
+                args.append(token)
+        if cmd != None:
+            yield (cmd, args)
     
     def prompt(self):
-        proc = None
+        procs = []
         args = []
         try:
+            raw_line = None
             try:
                 text = u"%s$ " % (self.__mtgox.get_username() or u"")
-                line = raw_input(text).decode(self.__encoding).split()
-                if line:
-                    cmd, args = line[0], line[1:]
-                    proc = self.__get_cmd_proc(cmd, self.__unknown(cmd))
+                line = raw_input(text).decode(self.__encoding)
             except EOFError, e:
                 print u"exit"
-                proc = self.__cmd_exit__
-            if proc != None:
-                (min_arity, max_arity) = self.__get_proc_arity(proc)
-                arg_count = len(args)
-                if min_arity <= arg_count and (max_arity == None or arg_count <= max_arity):
-                    proc(*args)
-                else:
-                    if min_arity == max_arity:
-                        arity_text = unicode(min_arity)
-                    elif max_arity == None:
-                        arity_text = u"%s+" % min_arity
+                self.__cmd_exit__()
+            commands = self.__parse_tokens(self.__tokenize_command(line))
+            for (cmd, args) in commands:
+                try:
+                    proc = self.__get_cmd_proc(cmd, self.__unknown(cmd))
+                    (min_arity, max_arity) = self.__get_proc_arity(proc)
+                    arg_count = len(args)
+                    if min_arity <= arg_count and (max_arity == None or arg_count <= max_arity):
+                        proc(*args)
                     else:
-                        arity_text = u"%s-%s" % (min_arity, max_arity)
-                    arg_text = u"argument" + (u"" if arity_text == u"1" else u"s")
-                    raise ArityError(u"Expected %s %s, got %s" % (arity_text, arg_text, arg_count))
-        except MtGoxError, e:
-            print u"Mt. Gox error: %s" % e
+                        if min_arity == max_arity:
+                            arity_text = unicode(min_arity)
+                        elif max_arity == None:
+                            arity_text = u"%s+" % min_arity
+                        else:
+                            arity_text = u"%s-%s" % (min_arity, max_arity)
+                        arg_text = u"argument" + (u"" if arity_text == u"1" else u"s")
+                        raise ArityError(u"Expected %s %s, got %s." % (arity_text, arg_text, arg_count))
+                except MtGoxError, e:
+                    print u"Mt. Gox error: %s" % e
+                except CommandError, e:
+                    print e
+                except ArityError, e:
+                    print e
+                except NoCredentialsError:
+                    print u"No login credentials entered. Use the login command first."
+                except LoginError:
+                    print u"Mt. Gox rejected the login credentials. Maybe you made a typo?"
         except EOFError, e:
             raise e
-        except CommandError, e:
+        except TokenizationError, e:
             print e
-        except ArityError, e:
-            print e
-        except NoCredentialsError:
-            print u"No login credentials entered. Use the login command first."
-        except LoginError:
-            print u"Mt. Gox rejected the login credentials. Maybe you made a typo?"
         except KeyboardInterrupt:
             print
         except Exception, e:
