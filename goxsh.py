@@ -26,7 +26,8 @@ class LoginError(Exception):
 class MtGox(object):	
 	def __init__(self, user_agent):
 		self.unset_credentials()
-		self.__url_parts = urlparse.urlsplit("https://mtgox.com/code/")
+		# Changed https://mtgox.com/code/ to https://mtgox.com/api/0/
+		self.__url_parts = urlparse.urlsplit("https://mtgox.com/api/0/")
 		self.__headers = {
 			"User-Agent": user_agent
 		}
@@ -127,7 +128,7 @@ class GoxSh(object):
 		self.__btc_precision = Decimal("0.00000001")
 		self.__usd_precision = Decimal("0.00001")
 		self.__usd_re = re.compile(r"^\$(\d*\.?\d+)$")
-		self.__mtgox_commission = Decimal("0.003") # Be careful: this could change!
+		self.__mtgox_commission = Decimal("0.003") # Be careful: this might change!
 		collapse_escapes = partial(re.compile(r"\\(.)", re.UNICODE).sub, "\\g<1>")
 		self.__token_types = (
 			( # naked (unquoted)
@@ -196,6 +197,8 @@ class GoxSh(object):
 		try:
 			raw_line = None
 			try:
+				# \033[0;0m =	reset/all attributes off
+				# \033[1;36m =	set ANSI text color to magenta
 				text = u"\033[0;0m\033[1;36m%s$\033[0;0m " % (self.__mtgox.get_username() or u"")
 				line = raw_input(text).decode(self.__encoding)
 			except EOFError, e:
@@ -414,10 +417,14 @@ class GoxSh(object):
 	def __cmd_ticker__(self):
 		u"Display ticker."
 		ticker = self.__mtgox.get_ticker()
+		# \033[1;33	=	set ANSI text color to yellow
+		# \033[1;32 =	set ANSI text color to green
+		# \033[1;31 =	set ANSI text color to red
+		# \033[0;0m	=	reset/all attributes off
 		print u"Last:\t\033[1;33m%s\033[0;0m" % ticker[u"last"]
 		print u"Buy:\t\033[1;32m%s\033[0;m"  % ticker[u"buy"]
 		print u"Sell:\t\033[1;31m%s\033[0;m" % ticker[u"sell"]
-		print u"Hight:\t%s" % ticker[u"high"]
+		print u"High:\t%s" % ticker[u"high"] # typo fixed
 		print u"Low:\t%s" % ticker[u"low"]
 		print u"Volume:\t%s" % ticker[u"vol"]
 
