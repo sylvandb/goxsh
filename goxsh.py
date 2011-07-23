@@ -14,6 +14,33 @@ import urllib
 import urllib2
 import urlparse
 
+# import for parsing config-file
+import ConfigParser
+import string
+
+# parse config-file
+config = ConfigParser.ConfigParser()
+config.read('goxsh.cfg')
+
+class Configure():
+	def setColor(self, to):
+		try:
+			to = config.get("ansi", config.get("colors", to))
+			to = to.decode('string_escape')
+			return to
+		except ConfigParser.Error, e:
+			print u"Configuration error: %s" % e
+		
+	def resetAttr(self):
+		try:
+			creset = config.get("ansi", "reset")
+			creset = creset.decode('string_escape')
+			return creset
+		except ConfigParser.Error, e:
+			print u"Configuration error: %s" %e
+
+conf = Configure();
+
 class MtGoxError(Exception):
 	pass
 
@@ -26,7 +53,6 @@ class LoginError(Exception):
 class MtGox(object):	
 	def __init__(self, user_agent):
 		self.unset_credentials()
-		# Changed https://mtgox.com/code/ to https://mtgox.com/api/0/
 		self.__url_parts = urlparse.urlsplit("https://mtgox.com/api/0/")
 		self.__headers = {
 			"User-Agent": user_agent
@@ -197,9 +223,7 @@ class GoxSh(object):
 		try:
 			raw_line = None
 			try:
-				# \033[0;0m =	reset/all attributes off
-				# \033[1;36m =	set ANSI text color to magenta
-				text = u"\033[0;0m\033[1;36m%s$\033[0;0m " % (self.__mtgox.get_username() or u"")
+				text = u"%s%s%s%s$%s " % (conf.setColor("shell_user"), self.__mtgox.get_username() or u"", conf.resetAttr(), conf.setColor("shell_self"), conf.resetAttr())
 				line = raw_input(text).decode(self.__encoding)
 			except EOFError, e:
 				print u"exit"
@@ -323,7 +347,11 @@ class GoxSh(object):
 			properties.append(u"dark")
 		if order[u"status"] == u"2":
 			properties.append(u"not enough funds")
-		print "[%s] %s\t%s:\t%sBTC @ %sUSD%s" % (timestamp, kind, order[u"oid"], order[u"amount"], order[u"price"], (" (" + ", ".join(properties) + ")" if properties else ""))
+		if kind == u"sell":
+			print "%s[%s%s%s%s%s]%s %s%s%s\t%s%s:%s\t%s%s%s%sBTC%s @ %s%s%s%sUSD%s%s" % (conf.setColor("orders_selltimebrackets"), conf.resetAttr(), conf.setColor("orders_selltime"),timestamp, conf.resetAttr(), conf.setColor("orders_selltimebrackets"), conf.resetAttr(), conf.setColor("orders_sellkind"), kind, conf.resetAttr(), conf.setColor("orders_selloid"), order[u"oid"], conf.resetAttr(), conf.setColor("orders_sellamount"), order[u"amount"], conf.resetAttr(), conf.setColor("orders_sellcurrsymbol"), conf.resetAttr(), conf.setColor("orders_sellprice"), order[u"price"], conf.resetAttr(), conf.setColor("orders_sellcurrsymbol"), conf.resetAttr(), (" (" + ", ".join(properties) + ")" if properties else ""))
+		if kind == u"buy":
+			print "%s[%s%s%s%s%s]%s %s%s%s\t%s%s:%s\t%s%s%s%sBTC%s @ %s%s%s%sUSD%s%s" % (conf.setColor("orders_buytimebrackets"), conf.resetAttr(), conf.setColor("orders_buytime"),timestamp, conf.resetAttr(), conf.setColor("orders_buytimebrackets"), conf.resetAttr(), conf.setColor("orders_buykind"), kind, conf.resetAttr(), conf.setColor("orders_buyoid"), order[u"oid"], conf.resetAttr(), conf.setColor("orders_buyamount"), order[u"amount"], conf.resetAttr(), conf.setColor("orders_buycurrsymbol"), conf.resetAttr(), conf.setColor("orders_buyprice"), order[u"price"], conf.resetAttr(), conf.setColor("orders_buycurrsymbol"), conf.resetAttr(), (" (" + ", ".join(properties) + ")" if properties else ""))
+		#print "[%s] %s\t%s:\t%sBTC @ %sUSD%s" % (timestamp, kind, order[u"oid"], order[u"amount"], order[u"price"], (" (" + ", ".join(properties) + ")" if properties else ""))
 		
 	def __unknown(self, cmd):
 		def __unknown_1(*args):
@@ -417,16 +445,12 @@ class GoxSh(object):
 	def __cmd_ticker__(self):
 		u"Display ticker."
 		ticker = self.__mtgox.get_ticker()
-		# \033[1;33	=	set ANSI text color to yellow
-		# \033[1;32 =	set ANSI text color to green
-		# \033[1;31 =	set ANSI text color to red
-		# \033[0;0m	=	reset/all attributes off
-		print u"Last:\t\033[1;33m%s\033[0;0m" % ticker[u"last"]
-		print u"Buy:\t\033[1;32m%s\033[0;m"  % ticker[u"buy"]
-		print u"Sell:\t\033[1;31m%s\033[0;m" % ticker[u"sell"]
-		print u"High:\t%s" % ticker[u"high"] # typo fixed
-		print u"Low:\t%s" % ticker[u"low"]
-		print u"Volume:\t%s" % ticker[u"vol"]
+		print u"Last:\t%s%s%s" % (conf.setColor("ticker_last"), ticker[u"last"], conf.resetAttr())
+		print u"Buy:\t%s%s%s"  % (conf.setColor("ticker_buy"), ticker[u"buy"], conf.resetAttr())
+		print u"Sell:\t%s%s%s" % (conf.setColor("ticker_sell"), ticker[u"sell"], conf.resetAttr())
+		print u"High:\t%s%s%s" % (conf.setColor("ticker_high"), ticker[u"high"], conf.resetAttr())
+		print u"Low:\t%s%s%s" % (conf.setColor("ticker_low"), ticker[u"low"], conf.resetAttr())
+		print u"Volume:\t%s%s%s" % (conf.setColor("ticker_vol"), ticker[u"vol"], conf.resetAttr())
 
 	def __cmd_withdraw__(self, address, amount):
 		u"Withdraw bitcoins."
