@@ -14,32 +14,37 @@ import urllib
 import urllib2
 import urlparse
 
-# import for parsing config-file
+# Imports for parsing config file
 import ConfigParser
 import string
 
-# parse config-file
+# Parse config file
 config = ConfigParser.ConfigParser()
 config.read('goxsh.cfg')
 
-class Configure():
+class Configure(object):
 	def setColor(self, to):
 		try:
 			to = config.get("ansi", config.get("colors", to))
 			to = to.decode('string_escape')
 			return to
-		except ConfigParser.Error, e:
-			print u"Configuration error: %s" % e
+		except ConfigParser.Error:
+		# In case no color is defined in config/no config file given/found set color to default
+			to = "\033[0;0m"
+			return to
 		
 	def resetAttr(self):
 		try:
 			creset = config.get("ansi", "reset")
 			creset = creset.decode('string_escape')
 			return creset
-		except ConfigParser.Error, e:
-			print u"Configuration error: %s" %e
+		except ConfigParser.Error:
+		# In case reset is not defined in config/no config given/found use default reset code
+			creset = "\033[0;0m"
+			return creset
 
-conf = Configure();
+# Providing Configure functions
+conf = Configure()
 
 class MtGoxError(Exception):
 	pass
@@ -49,7 +54,7 @@ class NoCredentialsError(Exception):
 
 class LoginError(Exception):
 	pass
-
+	
 class MtGox(object):	
 	def __init__(self, user_agent):
 		self.unset_credentials()
@@ -336,8 +341,8 @@ class GoxSh(object):
 			self.__print_order(order)
 	
 	def __print_balance(self, balance):
-		print u"BTC:\t", balance[u"btcs"]
-		print u"USD:\t", balance[u"usds"]
+		print u"%sBTC:%s\t%s%s%s" % (conf.setColor("balance_btcsymbol"), conf.resetAttr(), conf.setColor("balance_btcamount"), balance[u"btcs"], conf.resetAttr())
+		print u"%sUSD:%s\t%s%s%s" % (conf.setColor("balance_usdsymbol"), conf.resetAttr(), conf.setColor("balance_usdamount"), balance[u"usds"], conf.resetAttr())
 	
 	def __print_order(self, order):
 		kind = {1: u"sell", 2: u"buy"}[order[u"type"]]
@@ -348,9 +353,10 @@ class GoxSh(object):
 		if order[u"status"] == u"2":
 			properties.append(u"not enough funds")
 		if kind == u"sell":
-			print "%s[%s%s%s%s%s]%s %s%s%s\t%s%s:%s\t%s%s%s%sBTC%s @ %s%s%s%sUSD%s%s" % (conf.setColor("orders_selltimebrackets"), conf.resetAttr(), conf.setColor("orders_selltime"),timestamp, conf.resetAttr(), conf.setColor("orders_selltimebrackets"), conf.resetAttr(), conf.setColor("orders_sellkind"), kind, conf.resetAttr(), conf.setColor("orders_selloid"), order[u"oid"], conf.resetAttr(), conf.setColor("orders_sellamount"), order[u"amount"], conf.resetAttr(), conf.setColor("orders_sellcurrsymbol"), conf.resetAttr(), conf.setColor("orders_sellprice"), order[u"price"], conf.resetAttr(), conf.setColor("orders_sellcurrsymbol"), conf.resetAttr(), (" (" + ", ".join(properties) + ")" if properties else ""))
+			print "%s[%s%s%s%s%s]%s %s%s%s\t%s%s:%s\t%s%s%s%sBTC%s %s@%s %s%s%s%sUSD%s%s" % (conf.setColor("orders_selltimebrackets"), conf.resetAttr(), conf.setColor("orders_selltime"),timestamp, conf.resetAttr(), conf.setColor("orders_selltimebrackets"), conf.resetAttr(), conf.setColor("orders_sellkind"), kind, conf.resetAttr(), conf.setColor("orders_selloid"), order[u"oid"], conf.resetAttr(), conf.setColor("orders_sellamount"), order[u"amount"], conf.resetAttr(), conf.setColor("orders_sellcurrsymbol"), conf.resetAttr(), conf.setColor("orders_sellATsymbol"), conf.resetAttr(), conf.setColor("orders_sellprice"), order[u"price"], conf.resetAttr(), conf.setColor("orders_sellcurrsymbol"), conf.resetAttr(), (" (" + ", ".join(properties) + ")" if properties else ""))
 		if kind == u"buy":
-			print "%s[%s%s%s%s%s]%s %s%s%s\t%s%s:%s\t%s%s%s%sBTC%s @ %s%s%s%sUSD%s%s" % (conf.setColor("orders_buytimebrackets"), conf.resetAttr(), conf.setColor("orders_buytime"),timestamp, conf.resetAttr(), conf.setColor("orders_buytimebrackets"), conf.resetAttr(), conf.setColor("orders_buykind"), kind, conf.resetAttr(), conf.setColor("orders_buyoid"), order[u"oid"], conf.resetAttr(), conf.setColor("orders_buyamount"), order[u"amount"], conf.resetAttr(), conf.setColor("orders_buycurrsymbol"), conf.resetAttr(), conf.setColor("orders_buyprice"), order[u"price"], conf.resetAttr(), conf.setColor("orders_buycurrsymbol"), conf.resetAttr(), (" (" + ", ".join(properties) + ")" if properties else ""))
+			print "%s[%s%s%s%s%s]%s %s%s%s\t%s%s:%s\t%s%s%s%sBTC%s %s@%s %s%s%s%sUSD%s%s" % (conf.setColor("orders_buytimebrackets"), conf.resetAttr(), conf.setColor("orders_buytime"),timestamp, conf.resetAttr(), conf.setColor("orders_buytimebrackets"), conf.resetAttr(), conf.setColor("orders_buykind"), kind, conf.resetAttr(), conf.setColor("orders_buyoid"), order[u"oid"], conf.resetAttr(), conf.setColor("orders_buyamount"), order[u"amount"], conf.resetAttr(), conf.setColor("orders_buycurrsymbol"), conf.resetAttr(), conf.setColor("orders_buyATsymbol"), conf.resetAttr(), conf.setColor("orders_buyprice"), order[u"price"], conf.resetAttr(), conf.setColor("orders_buycurrsymbol"), conf.resetAttr(), (" (" + ", ".join(properties) + ")" if properties else ""))
+			
 		#print "[%s] %s\t%s:\t%sBTC @ %sUSD%s" % (timestamp, kind, order[u"oid"], order[u"amount"], order[u"price"], (" (" + ", ".join(properties) + ")" if properties else ""))
 		
 	def __unknown(self, cmd):
@@ -433,8 +439,8 @@ class GoxSh(object):
 			if dec_price < 0:
 				raise CommandError(u"%s: Invalid price." % price)
 			min_profitable_ratio = (1 - self.__mtgox_commission)**(-2)
-			print u"Short:\t< %s" % (dec_price / min_profitable_ratio).quantize(self.__usd_precision, ROUND_DOWN)
-			print u"Long:\t> %s" % (dec_price * min_profitable_ratio).quantize(self.__usd_precision, ROUND_UP)
+			print u"%sShort:%s\t%s<%s %s%s%s" % (conf.setColor("profit_shorttext"), conf.resetAttr(), conf.setColor("profit_shortsign"), conf.resetAttr(), conf.setColor("profit_shortvalue"), (dec_price / min_profitable_ratio).quantize(self.__usd_precision, ROUND_DOWN), conf.resetAttr())
+			print u"%sLong:%s\t%s>%s %s%s%s" % (conf.setColor("profit_longtext"), conf.resetAttr(), conf.setColor("profit_longsign"), conf.resetAttr(), conf.setColor("profit_longvalue"), (dec_price * min_profitable_ratio).quantize(self.__usd_precision, ROUND_UP), conf.resetAttr())
 		except InvalidOperation:
 			raise CommandError(u"%s: Invalid price." % price)
 	
