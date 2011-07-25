@@ -16,12 +16,32 @@ import urlparse
 
 # Imports for parsing config file
 import ConfigParser
+from ConfigParser import SafeConfigParser
 import string
 
-# Parse config file
-config = ConfigParser.ConfigParser()
-config.read('goxsh.cfg')
+# # Imports for storing secret key
+# import binascii
+# from Crypto.Cipher import AES
+# from Crypto.Hash import SHA256
 
+# Set config file
+cfgFile = "goxsh.cfg"
+
+class CfgParse(object):
+	def readCfg(self):
+		cfg = ConfigParser.SafeConfigParser()
+		cfg.read(cfgFile)
+		return cfg
+	def setCfg(self, section, name, value):
+		section = section.decode('string_escape')
+		name = name.decode('string_escape')
+		value = value.decode('string_escape')
+		cfg = ConfigParser.SafeConfigParser()
+		cfg.read(cfgFile)
+		cfg.set(section, name, value)
+		with open (cfgFile, 'wb') as configfile:
+			cfg.write(configfile)
+		
 class Configure(object):
 	def setColor(self, to):
 		try:
@@ -43,9 +63,6 @@ class Configure(object):
 			creset = "\033[0;0m"
 			return creset
 
-# Providing Configure functions
-conf = Configure()
-
 class MtGoxError(Exception):
 	pass
 
@@ -55,7 +72,10 @@ class NoCredentialsError(Exception):
 class LoginError(Exception):
 	pass
 	
-class MtGox(object):	
+# class MtGox(object):
+	# # To come ...
+	
+class MtGoxOld(object):	
 	def __init__(self, user_agent):
 		self.unset_credentials()
 		self.__url_parts = urlparse.urlsplit("https://mtgox.com/api/0/")
@@ -159,7 +179,9 @@ class GoxSh(object):
 		self.__btc_precision = Decimal("0.00000001")
 		self.__usd_precision = Decimal("0.00001")
 		self.__usd_re = re.compile(r"^\$(\d*\.?\d+)$")
-		self.__mtgox_commission = Decimal("0.003") # Be careful: this might change!
+		# Mt. Gox lowered fee expires on 2011-08-09
+		# and will be restored to 0.0065
+		self.__mtgox_commission = Decimal("0.003")
 		collapse_escapes = partial(re.compile(r"\\(.)", re.UNICODE).sub, "\\g<1>")
 		self.__token_types = (
 			( # naked (unquoted)
@@ -464,11 +486,72 @@ class GoxSh(object):
 		print withdraw_info[u"status"]
 		print u"Updated balance:"
 		self.__print_balance(withdraw_info)
+		
+	def __cmd_set__(self, section, name, value):
+		u"Set configuration values."
+		cfgp.setCfg(section, name, value)
+		
+	# def __cmd_activate__(self):
+		# u"Activate goxsh (not finished yet -> DO NOT USE)."
+		# secret = None
+		# password = None
+		# # Obtain secret - to come...
+		
+		# # Providing password to encrypt secret
+		# while not password:
+			# password = getpass.getpass("Password: ")
+		# secret = secret.decode('string_escape')
+		# password = password.decode('string_escape')
+		# hash = SHA256.new()
+		# # Hash password
+		# hash.update(password)
+		# # base64-encode password
+		# password = binascii.b2a_base64(hash.digest())
+		# # Truncating hash to get a valid length
+		# password = password[0:32]
+		# # Set password for encoding
+		# aes = AES.new(password, AES.MODE_ECB)
+		# # Fill secret with leading zeros to get a valid length
+		# secret = str.zfill(secret, 64)
+		# # Encrypt secret
+		# secret = aes.encrypt(secret)
+		# # base64-encode secret
+		# secret = binascii.b2a_base64(secret)
+		# # Writing encrypted secret to config file
+		# cfgp.setCfg("userauth", "secret", secret)
+		
+		# ## This goes to apilogin when implemented
+		# #secret = binascii.a2b_base64(secret)
+		# #secret = aes.decrypt(secret)
+		# # Truncate leading zeros (64-38=26)
+		# #secret = re.sub(r"\b0{26}","",secret)
+
+	def __cmd_reload__(self):
+		u"Reload config file."
+		global config
+		config = cfgp.readCfg()
+		
 
 def main():
+	# Prepare parsing of config file
+	global cfgp
+	cfgp = CfgParse()
+	# Read in config file
+	global config
+	config = cfgp.readCfg()
+	# Providing Configure functions
+	global conf
+	conf = Configure()
+	# Get authmode
+	mode = config.get('authmode', 'mode')
+	mode = mode.decode('string_escape')
 	locale.setlocale(locale.LC_ALL, "")
 	encoding = locale.getpreferredencoding()
-	sh = GoxSh(MtGox(u"goxsh"), encoding)
+	if (mode == "old"):
+		sh = GoxSh(MtGoxOld(u"goxsh"), encoding)
+	if (mode == "api"):
+		# Will be GoxSh(MtGox(u"goxsh"), encoding) when implemented
+		sh = GoxSh(MtGoxOld(u"goxsh"), encoding)
 	print u"Welcome to goxsh!"
 	print u"Type 'help' to get started."
 	try:
