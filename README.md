@@ -23,8 +23,8 @@ Mt. Gox Shell — a command-line frontend to the Mt. Gox Bitcoin Exchange
 
 ## Requirements
 
-[Python](http://python.org/) 2.6 or a newer 2.* release.
-[PyCrypto](https://www.dlitz.net/software/pycrypto/) 2.0.1 or later
+- [Python](http://python.org/) 2.6 or a newer 2.* release.
+- [PyCrypto](https://www.dlitz.net/software/pycrypto/) 2.0.1 or later.
 
 ## Usage
 
@@ -54,7 +54,7 @@ activated goxsh skip to step 11.
 	to display if logged in by providing it to the shell's prompt when logged in.
 6. Set the device name
 	- Run command "set appauth devicename your-device-name"
-	(It is recommended to use sth. similar to "YourComputersName_goxsh")
+	(it is recommended to use sth. similar to "YourComputersName_goxsh")
 7. Reload config by running the command "reload"
 8. Obtain activation key
 	- Login to Mt. Gox by pointing your webbrowser to https://mtgox.com/users/login
@@ -64,7 +64,7 @@ activated goxsh skip to step 11.
 	- Copy the generated key to clipboard (key is valid for 5 minutes only!)
 9. Run command "activate" with your activation key as argument ("activate your-key")
 10. Enter password to encrypt your secret
-	(It is recommended to use a different one than the one used with Mt. Gox!)
+	(it is recommended to use a different one than the one used with Mt. Gox!)
 11. Run command "login"
 12. Enter password to access encrypted secret
 
