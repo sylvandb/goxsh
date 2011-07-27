@@ -19,10 +19,16 @@ import ConfigParser
 from ConfigParser import SafeConfigParser
 import string
 
-# # Imports for storing secret key
-# import binascii
-# from Crypto.Cipher import AES
-# from Crypto.Hash import SHA256
+# Imports for storing secret key
+import binascii
+from Crypto.Cipher import AES
+from Crypto.Hash import SHA256
+
+# Imports for signing new API calls
+import base64
+import hmac
+import hashlib
+import time
 
 # Set config file
 cfgFile = "goxsh.cfg"
@@ -34,7 +40,8 @@ class CfgParse(object):
 		return cfg
 	def setCfg(self, section, name, value):
 		section = section.decode('string_escape')
-		name = name.decode('string_escape')
+		name = name.decode('string_escape')		
+		value = str(value)
 		value = value.decode('string_escape')
 		cfg = ConfigParser.SafeConfigParser()
 		cfg.read(cfgFile)
@@ -71,10 +78,118 @@ class NoCredentialsError(Exception):
 
 class LoginError(Exception):
 	pass
+
+class MtGox(object):
+	def __init__(self, user_agent):
+		self.unset_credentials()
+		self.__url_parts = urlparse.urlsplit("https://mtgox.com/api/0/")
+		self.__headers = {
+			"User-Agent": user_agent
+		}
+		
+	def get_username(self):
+		return self.__credentials[0] if self.have_credentials() else None
 	
-# class MtGox(object):
-	# # To come ...
+	def have_credentials(self):
+		return self.__credentials != None
+		
+	def set_credentials(self, username, key, secret):
+		if len(username) == 0:
+			raise ValueError(u"Empty username.")
+		if len(key) == 0:
+			raise ValueError(u"Empty key.")
+		if len(secret) == 0:
+			raise ValueError(u"Empty secret.")
+		self.__credentials = (username, key, secret)
+		
+	def unset_credentials(self):
+		self.__credentials = None
+		
+	def activate(self, devicename, activationkey, appkey):
+		cfgp.setCfg("authmode", "activationinprog", "True")
+		return self.__get_json("activate.php", params = {
+			u"name": devicename,
+			u"key": activationkey,
+			u"app": appkey
+		}, auth = False)
+		
+	def buy(self, amount, price):
+		return self.__get_json("buyBTC.php", params = {
+			u"amount": amount,
+			u"price": price
+		})
 	
+	def cancel_order(self, kind, oid):
+		return self.__get_json("cancelOrder.php", params = {
+			u"oid": oid,
+			u"type": kind
+		})[u"orders"]
+	
+	def get_balance(self):
+		return self.__get_json("getFunds.php")
+	
+	def get_orders(self):
+		return self.__get_json("getOrders.php")[u"orders"]
+	
+	def get_ticker(self):
+		return self.__get_json("data/ticker.php", auth = False)[u"ticker"]
+	
+	def sell(self, amount, price):
+		return self.__get_json("sellBTC.php", params = {
+			u"amount": amount,
+			u"price": price
+		})
+	
+	def withdraw(self, address, amount):
+		return self.__get_json("withdraw.php", params = {
+			u"group1": u"BTC",
+			u"btca": address,
+			u"amount": amount
+		})
+		
+	def __get_json(self, rel_path, params = {}, auth = True):
+		if auth and not self.have_credentials():
+			raise NoCredentialsError()
+		params = params.items()
+		if auth:
+			params += [
+				(u"nonce", int(time.time()))
+			]
+		post_data = urllib.urlencode(params) if len(params) > 0 else None
+		url = urlparse.urlunsplit((
+			self.__url_parts.scheme,
+			self.__url_parts.netloc,
+			self.__url_parts.path + rel_path,
+			self.__url_parts.query,
+			self.__url_parts.fragment
+		))
+		config = cfgp.readCfg()
+		activationinprog = config.get("authmode", "activationinprog")
+		if (activationinprog == "False"):
+			key = self.__credentials[1]
+			secret = self.__credentials[2]
+			sign = base64.b64encode(str(hmac.new(base64.b64decode(secret), post_data, hashlib.sha512).digest()))
+			user_agent = "goxsh"
+			self.__headers = {
+				"User-Agent": user_agent,
+				"Rest-Key": key,
+				"Rest-Sign": sign
+			}
+		if (activationinprog == "True"):
+			cfgp.setCfg("authmode", "activationinprog", "False")
+			config = cfgp.readCfg()
+			
+		req = urllib2.Request(url, post_data, self.__headers)
+		with closing(urllib2.urlopen(req, post_data)) as res:
+			data = json.load(res)
+		if u"error" in data:
+			if data[u"error"] == u"Not logged in.":
+				raise LoginError()
+			else:
+				raise MtGoxError(data[u"error"])
+		else:
+			return data
+
 class MtGoxOld(object):	
 	def __init__(self, user_agent):
 		self.unset_credentials()
@@ -423,18 +538,53 @@ class GoxSh(object):
 	
 	def __cmd_login__(self, username = u""):
 		u"Set login credentials."
-		if not username:
-			while not username:
-				username = raw_input(u"Username: ").decode(self.__encoding)
-			try:
-				readline.remove_history_item(readline.get_current_history_length() - 1)
-			except AttributeError:
-				# Some systems lack remove_history_item
-				pass
-		password = u""
-		while not password:
-			password = getpass.getpass()
-		self.__mtgox.set_credentials(username, password)
+		config = cfgp.readCfg()
+		mode = config.get('authmode', 'mode')
+		mode = mode.decode('string_escape')
+		if (mode == "old"):
+			if not username:
+				while not username:
+					username = raw_input(u"Username: ").decode(self.__encoding)
+				try:
+					readline.remove_history_item(readline.get_current_history_length() - 1)
+				except AttributeError:
+					# Some systems lack remove_history_item
+					pass
+			password = u""
+			while not password:
+				password = getpass.getpass()
+			self.__mtgox.set_credentials(username, password)
+		if (mode == "api"):
+			username = config.get('userauth', 'username')
+			username = username.decode('string_escape')
+			secret = config.get('userauth', 'secret')
+			secret = secret.decode('string_escape')
+			length = config.get('userauth', 'length')
+			length = length.decode('string_escape')
+			key = config.get('userauth', 'key')
+			key = key.decode('string_escape')
+			password = u""
+			# Providing password to decrypt secret
+			while not password:
+				password = getpass.getpass("Password: ")
+			password = password.decode('string_escape')
+			hash = SHA256.new()
+			# Hash password
+			hash.update(password)
+			# base64-encode password
+			password = binascii.b2a_base64(hash.digest())
+			# Truncating hash to get a valid length
+			password = password[0:32]
+			# Set password for decryption
+			aes = AES.new(password, AES.MODE_ECB)
+			secret = binascii.a2b_base64(secret)
+			secret = aes.decrypt(secret)
+			# Truncate leading zeros
+			length = int(length)
+			length = 128-length
+			length = str(length)
+			secret = re.sub(r"\b0{"+length+"}","",secret)
+			self.__mtgox.set_credentials(username, key, secret)
 	
 	def __cmd_logout__(self):
 		u"Unset login credentials."
@@ -491,40 +641,65 @@ class GoxSh(object):
 		u"Set configuration values."
 		cfgp.setCfg(section, name, value)
 		
-	# def __cmd_activate__(self):
-		# u"Activate goxsh (not finished yet -> DO NOT USE)."
-		# secret = None
-		# password = None
-		# # Obtain secret - to come...
-		
-		# # Providing password to encrypt secret
-		# while not password:
-			# password = getpass.getpass("Password: ")
-		# secret = secret.decode('string_escape')
-		# password = password.decode('string_escape')
-		# hash = SHA256.new()
-		# # Hash password
-		# hash.update(password)
-		# # base64-encode password
-		# password = binascii.b2a_base64(hash.digest())
-		# # Truncating hash to get a valid length
-		# password = password[0:32]
-		# # Set password for encoding
-		# aes = AES.new(password, AES.MODE_ECB)
-		# # Fill secret with leading zeros to get a valid length
-		# secret = str.zfill(secret, 64)
-		# # Encrypt secret
-		# secret = aes.encrypt(secret)
-		# # base64-encode secret
-		# secret = binascii.b2a_base64(secret)
-		# # Writing encrypted secret to config file
-		# cfgp.setCfg("userauth", "secret", secret)
-		
-		# ## This goes to apilogin when implemented
-		# #secret = binascii.a2b_base64(secret)
-		# #secret = aes.decrypt(secret)
-		# # Truncate leading zeros (64-38=26)
-		# #secret = re.sub(r"\b0{26}","",secret)
+	def __cmd_activate__(self, activationkey):
+		u"Activate goxsh."
+		config = cfgp.readCfg()
+		mode = config.get('authmode', 'mode')
+		mode = mode.decode('string_escape')
+		if (mode == "api"):
+			activationkey = activationkey.decode('string escape')
+			secret = None
+			password = None
+			# Get app auth info
+			config = cfgp.readCfg()
+			devicename = config.get('appauth', 'devicename')
+			devicename = devicename.decode('string_escape')
+			appkey = config.get('appauth', 'appkey')
+			appkey = appkey.decode('string_escape')	
+			# Obtain API-key and secret		
+			activate = self.__mtgox.activate(devicename, activationkey, appkey)
+			# Get user's key
+			key = activate[u"Rest-Key"]
+			key = key.decode('string_escape')
+			# Get user's secret
+			secret = activate[u"Secret"]
+			secret = secret.decode('string_escape')
+			# Get user's rights
+			rights = activate[u"Rights"]
+			# rights = rights.decode('string_escape')
+			# Get secret length
+			length = len(secret)
+			# Write user's key, secret length and rights to config
+			cfgp.setCfg("userauth", "key", key)
+			cfgp.setCfg("userauth", "length", length)
+			cfgp.setCfg("userauth", "rights", rights)
+			print u"Enter password for secret encryption."
+			# Providing password to encrypt secret
+			while not password:
+				password = getpass.getpass("Password: ")
+			secret = secret.decode('string_escape')
+			password = password.decode('string_escape')
+			hash = SHA256.new()
+			# Hash password
+			hash.update(password)
+			# base64-encode password
+			password = binascii.b2a_base64(hash.digest())
+			# Truncating hash to get a valid length
+			password = password[0:32]
+			# Set password for encryption
+			aes = AES.new(password, AES.MODE_ECB)
+			# Fill secret with leading zeros to get a valid length
+			secret = str.zfill(secret, 128)
+			# Encrypt secret
+			secret = aes.encrypt(secret)
+			# base64-encode secret
+			secret = binascii.b2a_base64(secret)
+			secret = secret.decode('string_escape')
+			# Writing encrypted secret to config file
+			cfgp.setCfg("userauth", "secret", secret)
+			config = cfgp.readCfg()			
+		else:
+			print u"Command activate works only in API-mode."
 
 	def __cmd_reload__(self):
 		u"Reload config file."
@@ -550,8 +725,7 @@ def main():
 	if (mode == "old"):
 		sh = GoxSh(MtGoxOld(u"goxsh"), encoding)
 	if (mode == "api"):
-		# Will be GoxSh(MtGox(u"goxsh"), encoding) when implemented
-		sh = GoxSh(MtGoxOld(u"goxsh"), encoding)
+		sh = GoxSh(MtGox(u"goxsh"), encoding)
 	print u"Welcome to goxsh!"
 	print u"Type 'help' to get started."
 	try:
