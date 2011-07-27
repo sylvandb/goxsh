@@ -6,20 +6,23 @@
 
 ### Set authentification mode
 ## mode = old -> login with username/password
-## mode = api -> login with api-key/secret (not yet working)
+## mode = api -> login with API-key/secret
 [authmode]
-mode = old
+mode 				=	old
+activationinprog	=	False
 
 ### Set user auth information
 [userauth]
 username			=
 key					=
 secret				=
+length				=
+rights				=
 
 ### Set app auth information
 [appauth]
-device				=
-key					=	d96f4e85-990a-4115-81ef-0c8baedf6895
+devicename			=	MyComputer_goxsh
+appkey				=	d96f4e85-990a-4115-81ef-0c8baedf6895
 
 ### Set colors
 ## Available colors: gray, red, green, yellow, blue, magenta, cyan, white.
