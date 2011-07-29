@@ -4,13 +4,6 @@
 #### To preserve comments don't use this as the actual goxsh.cfg
 #### as comments will get wiped out when changing settings within goxsh.
 
-### Set authentification mode
-## mode = old -> login with username/password
-## mode = api -> login with API-key/secret
-[authmode]
-mode 				=	old
-activationinprog	=	False
-
 ### Set user auth information
 [userauth]
 username			=
@@ -30,7 +23,7 @@ appkey				=	d96f4e85-990a-4115-81ef-0c8baedf6895
 ## default (re)sets ANSI attributes to none
 
 [colors]
-## Set ticker colors
+## Set ticker and depth colors (at the moment ticker and depth settings correlate)
 ticker_last			=	yellow
 ticker_buy			=	green
 ticker_sell			=	red
