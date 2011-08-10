@@ -22,12 +22,12 @@ Mt. Gox Shell — a command-line frontend to the Mt. Gox Bitcoin Exchange
 
 ## Requirements
 
+- POSIX environment (GNU/Linux, BSD, Unix, cygwin, ...)
 - [Python](http://python.org/) 2.6 or a newer 2.* release.
 - [PyCrypto](https://www.dlitz.net/software/pycrypto/) 2.0.1 or later.
 
 ## Usage
-
-Run the script in a terminal window and type "help" to see the list of available commands.
+Download goxsh.py AND goxsh.cfg, run the script in a terminal window and type "help" to see the list of available commands.
 
 ### Login/Logout with username/password
 

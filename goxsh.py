@@ -602,25 +602,70 @@ class GoxSh(object):
 		global config
 		config = cfgp.readCfg()
 		
-	def __cmd_depth__(self, steps):
-		u"Get depth."
+	def __cmd_depth__(self, steps, price=0, cumulate=0):
+		u"Show orderbook (market depth).\nsteps:\t\tNumber of rows to be printed before\n\t\tand after last trade/given price.\nprice:\t\tSpecify price (if not given last trade is assumed).\ncumulate:\tNot yet implemented."
 		steps = int(steps)
-		bids = list(self.__mtgox.get_depth()[u"bids"])
-		asks = list(self.__mtgox.get_depth()[u"asks"])
-		bids = bids[-steps:]
-		asks = asks[:steps]
-		print u""
-		print u"Type | Price\t| Amount"
-		print u"=================================================="
-		for i in bids:
-			print u"Bid  | %s%s%s\t| %s" % (conf.setColor("ticker_buy"), i[0], conf.resetAttr(), i[1])
-		print u"--------------------------------------------------"
-		print u"Last | %s%s%s\t|" % (conf.setColor("ticker_last"), self.__mtgox.get_ticker()[u"last"], conf.resetAttr())
-		print u"--------------------------------------------------"
-		for i in asks:
-			print u"Ask  | %s%s%s\t| %s" % (conf.setColor("ticker_sell"), i[0], conf.resetAttr(), i[1])
-		print u"--------------------------------------------------"
-
+		price = Decimal(price)
+		cumulate = int(cumulate)
+		if (price < 0):
+			print u"Argument \"price\" requires a positive value."
+		elif (cumulate != 0) and (cumulate != 1):
+			print u"Allowed values for argument \"cumulate\" are 0 and 1."
+		elif (steps) and (price == 0) and (cumulate == 0):
+			bids = list(self.__mtgox.get_depth()[u"bids"])
+			asks = list(self.__mtgox.get_depth()[u"asks"])
+			bids = bids[-steps:]
+			asks = asks[:steps]
+			print u""
+			print u"Type | Price\t| Amount"
+			print u"=================================================="
+			for i in bids:
+				print u"Bid  | %s%s%s\t| %s" % (conf.setColor("depth_bid"), i[0], conf.resetAttr(), i[1])
+			print u"--------------------------------------------------"
+			print u"Last | %s%s%s\t|" % (conf.setColor("depth_last"), self.__mtgox.get_ticker()[u"last"], conf.resetAttr())
+			print u"--------------------------------------------------"
+			for i in asks:
+				print u"Ask  | %s%s%s\t| %s" % (conf.setColor("depth_ask"), i[0], conf.resetAttr(), i[1])
+			print u"--------------------------------------------------"
+		elif (steps) and (price > 0):
+			bids = dict(self.__mtgox.get_depth()[u"bids"])
+			asks = dict(self.__mtgox.get_depth()[u"asks"])
+			depth = dict(self.__mtgox.get_depth()[u"bids"])
+			depth.update(dict(self.__mtgox.get_depth()[u"asks"]))
+			ia = 1
+			ib = 1
+			print u""
+			print u"Type | Price\t| Amount"
+			print u"=================================================="			
+			for key in sorted(depth.iterkeys(), reverse=True):
+				keyvalue = Decimal(str(key))
+				if (keyvalue < price) and (ia <= steps):
+					if key in bids:
+						print u"Bid  | %s%s%s\t| %s%s%s" % (conf.setColor("depth_bid"), key, conf.resetAttr(), conf.setColor("depth_bid"), depth[key], conf.resetAttr())
+					elif key in asks:
+						print u"Ask  | %s%s%s\t| %s%s%s" % (conf.setColor("depth_ask"), key, conf.resetAttr(), conf.setColor("depth_ask"), depth[key], conf.resetAttr())
+					ia += 1
+			print u"--------------------------------------------------"					
+			if (price in depth):
+				if price in bids:
+						print u"Bid  | %s%s%s\t| %s%s%s" % (conf.setColor("depth_bid"), price, conf.resetAttr(), conf.setColor("depth_bid"), depth[price], conf.resetAttr())
+				elif price in asks:
+					print u"Ask  | %s%s%s\t| %s%s%s" % (conf.setColor("depth_ask"), price, conf.resetAttr(), conf.setColor("depth_ask"), depth[price], conf.resetAttr())
+			else:
+				print u"n/a  | %s%s%s\t| %sNo amount at given price%s" % (conf.setColor("depth_no"), price, conf.resetAttr(), conf.setColor("depth_no"), conf.resetAttr())
+			print u"--------------------------------------------------"	
+			for key in sorted(depth.iterkeys()):
+				keyvalue = Decimal(str(key))
+				if (keyvalue > price) and (ib <= steps):
+					if key in bids:
+						print u"Bid  | %s%s%s\t| %s%s%s" % (conf.setColor("depth_bid"), key, conf.resetAttr(), conf.setColor("depth_bid"), depth[key], conf.resetAttr())
+					elif key in asks:
+						print u"Ask  | %s%s%s\t| %s%s%s" % (conf.setColor("depth_ask"), key, conf.resetAttr(), conf.setColor("depth_ask"), depth[key], conf.resetAttr())
+					ib += 1
+			print u"--------------------------------------------------"	
+		elif (steps) and (cumulate == 1):
+			print u"Not yet implemented."
+			
 def main():
 	# Counter for transaction-nonce
 	global counter
