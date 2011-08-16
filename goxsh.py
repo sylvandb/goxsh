@@ -680,15 +680,242 @@ class GoxSh(object):
 		u"Reload config file."
 		global config
 		config = cfgp.readCfg()
-		
-	def __cmd_depth__(self, steps, price=0, cumulate=0):
-		u"Show orderbook (market depth).\nsteps:\t\tNumber of rows to be printed before\n\t\tand after last trade/given price.\nprice:\t\tSpecify price (if not given last trade is assumed).\ncumulate:\tSet to 1 to cumulate amount.\n\t\tdepth 5 0 1 -> assumes last trade as starting point\n\t\tdepth 5 <price> 1 -> assumes <price> as starting point"
+	
+	def __cmd_bids__(self, steps=0, price=0):
+		u"Show orderbook (market depth) - bids side.\nsteps:\tNumber of rows to be printed.\n\tIf set to 0 all bids of orderbook are printed.\nprice:\tSpecify price to start with. If not given/set to 0\n\tit starts with first bid."
 		try:
-			steps = int(steps)
-			price = Decimal(price)
-			cumulate = int(cumulate)
+			try:
+				steps = int(steps)
+			except:
+				print u"Argument \"steps\" requires a positive value (integer)."
+				raise Exception
+			try:
+				price = Decimal(price)
+			except:
+				print u"Argument \"price\" requires a positive value (decimal)."
+				raise Exception
 			if (price < 0):
-				print u"Argument \"price\" requires a positive value."
+				print u"Argument \"price\" requires a positive value (decimal)."
+			# Show depth in x steps with last trade as starting point
+			elif (steps == 0) and (price == 0):
+				# Get current bids of order book (aka market depth) as a list
+				bids = list(self.__mtgox.get_depth()[u"bids"])
+				# Reverse order of bids for cumulation
+				bids.reverse()
+				# Create empty array cumulatedBids[]
+				cumulatedBids = []
+				# Set cumulateBids to 0
+				cumulateBids = 0
+				for i in bids:
+					cumulateBids += i[1]
+					cumulatedBids.append(cumulateBids)
+				# Re-reverse order of bids and reverse order of cumulatedBids
+				bids.reverse()
+				cumulatedBids.reverse()
+				print u""
+				print u"Type | Price\t| Amount\t| Sum"
+				print u"=================================================="
+				# icb -> Iterator for cumulatedBids[]
+				icb = 0
+				for i in bids:
+					# i[0] -> Price
+					# i[1] -> Amount
+					formatAmount = format(i[1], '.8f')
+					print u"Bid  | {0}\t| {1}\t| {2}".format(NiceText.colorText(i[0], "depth_bid"), formatAmount, cumulatedBids[icb])
+					icb += 1
+				print u"--------------------------------------------------"
+			elif (steps > 0) and (price == 0):
+				# Get current bids of order book (aka market depth) as a list
+				bids = list(self.__mtgox.get_depth()[u"bids"])
+				# Reverse order of bids for cumulation
+				bids.reverse()
+				# Create empty array cumulatedBids[]
+				cumulatedBids = []
+				# Set cumulateBids to 0
+				cumulateBids = 0
+				# Get x steps of bids only
+				bids = bids[:steps]
+				for i in bids:
+					cumulateBids += i[1]
+					cumulatedBids.append(cumulateBids)
+				# Re-reverse order of bids and reverse order of cumulatedBids
+				bids.reverse()
+				cumulatedBids.reverse()
+				print u""
+				print u"Type | Price\t| Amount\t| Sum"
+				print u"=================================================="
+				# icb -> Iterator for cumulatedBids[]
+				icb = 0
+				for i in bids:
+					# i[0] -> Price
+					# i[1] -> Amount
+					formatAmount = format(i[1], '.8f')
+					print u"Bid  | {0}\t| {1}\t| {2}".format(NiceText.colorText(i[0], "depth_bid"), formatAmount, cumulatedBids[icb])
+					icb += 1
+				print u"--------------------------------------------------"
+			elif (steps == 0) and (price > 0):
+				# Get current bids of order book (aka market depth) as a list
+				bids = list(self.__mtgox.get_depth()[u"bids"])
+				# Reverse order of bids for cumulation
+				bids.reverse()
+				# Create empty array cumulatedBids[]
+				cumulatedBids = []
+				# Set cumulateBids to 0
+				cumulateBids = 0
+				for i in bids:
+					cumulateBids += i[1]
+					cumulatedBids.append(cumulateBids)
+				# Re-reverse order of bids and reverse order of cumulatedBids
+				bids.reverse()
+				cumulatedBids.reverse()
+				print u""
+				print u"Type | Price\t| Amount\t| Sum"
+				print u"=================================================="
+				# icb -> Iterator for cumulatedBids[]
+				icb = 0
+				for i in bids:
+					keyvalue = Decimal(str(i[0]))
+					if (keyvalue <= price):
+						if (keyvalue < price):
+							# i[0] -> Price
+							# i[1] -> Amount
+							formatAmount = format(i[1], '.8f')
+							print u"Bid  | {0}\t| {1}\t| {2}".format(NiceText.colorText(i[0], "depth_bid"), formatAmount, cumulatedBids[icb])
+							icb += 1
+						elif (keyvalue == price):
+							print u"--------------------------------------------------"	
+							print u"Bid  | {0}\t| {1}\t| {2}".format(NiceText.colorText(i[0], "depth_bid"), formatAmount, cumulatedBids[icb])
+							break
+					else:
+						print u"--------------------------------------------------"	
+						print u"n/a  | {0}\t| {1}".format(NiceText.colorText(price, "depth_no"), NiceText.colorText("No amount at given price", "depth_no"))
+						break
+				print u"--------------------------------------------------"
+			elif (steps > 0) and (price > 0):
+			 print u"Not yet implemented. Tell me if you really need this :-)"
+		except:
+			print u"Execution aborted."
+			
+	def __cmd_asks__(self, steps=0, price=0):
+		u"Show orderbook (market depth) - asks side.\nsteps:\tNumber of rows to be printed.\n\tIf set to 0 all asks of orderbook are printed.\nprice:\tSpecify price to start with. If not given/set to 0\n\tit starts with first ask."
+		try:
+			try:
+				steps = int(steps)
+			except:
+				print u"Argument \"steps\" requires a positive value (integer)."
+				raise Exception
+			try:
+				price = Decimal(price)
+			except:
+				print u"Argument \"price\" requires a positive value (decimal)."
+				raise Exception
+			if (price < 0):
+				print u"Argument \"price\" requires a positive value (decimal)."
+			# Show depth in x steps with last trade as starting point
+			elif (steps == 0) and (price == 0):
+				# Get current asks of order book (aka market depth) as a list
+				asks = list(self.__mtgox.get_depth()[u"asks"])
+				# Create empty array cumulatedasks[]
+				cumulatedasks = []
+				# Set cumulateasks to 0
+				cumulateasks = 0
+				for i in asks:
+					cumulateasks += i[1]
+					cumulatedasks.append(cumulateasks)
+				print u""
+				print u"Type | Price\t| Amount\t| Sum"
+				print u"=================================================="
+				# icb -> Iterator for cumulatedasks[]
+				icb = 0
+				for i in asks:
+					# i[0] -> Price
+					# i[1] -> Amount
+					formatAmount = format(i[1], '.8f')
+					print u"Ask  | {0}\t| {1}\t| {2}".format(NiceText.colorText(i[0], "depth_ask"), formatAmount, cumulatedasks[icb])
+					icb += 1
+				print u"--------------------------------------------------"
+			elif (steps > 0) and (price == 0):
+				# Get current asks of order book (aka market depth) as a list
+				asks = list(self.__mtgox.get_depth()[u"asks"])
+				# Create empty array cumulatedasks[]
+				cumulatedasks = []
+				# Set cumulateasks to 0
+				cumulateasks = 0
+				# Get x steps of asks only
+				asks = asks[:steps]
+				for i in asks:
+					cumulateasks += i[1]
+					cumulatedasks.append(cumulateasks)
+				print u""
+				print u"Type | Price\t| Amount\t| Sum"
+				print u"=================================================="
+				# icb -> Iterator for cumulatedasks[]
+				icb = 0
+				for i in asks:
+					# i[0] -> Price
+					# i[1] -> Amount
+					formatAmount = format(i[1], '.8f')
+					print u"Ask  | {0}\t| {1}\t| {2}".format(NiceText.colorText(i[0], "depth_ask"), formatAmount, cumulatedasks[icb])
+					icb += 1
+				print u"--------------------------------------------------"
+			elif (steps == 0) and (price > 0):
+				# Get current asks of order book (aka market depth) as a list
+				asks = list(self.__mtgox.get_depth()[u"asks"])
+				# Create empty array cumulatedasks[]
+				cumulatedasks = []
+				# Set cumulateasks to 0
+				cumulateasks = 0
+				for i in asks:
+					cumulateasks += i[1]
+					cumulatedasks.append(cumulateasks)
+				print u""
+				print u"Type | Price\t| Amount\t| Sum"
+				print u"=================================================="
+				# icb -> Iterator for cumulatedasks[]
+				icb = 0
+				for i in asks:
+					keyvalue = Decimal(str(i[0]))
+					if (keyvalue <= price):
+						if (keyvalue < price):
+							# i[0] -> Price
+							# i[1] -> Amount
+							formatAmount = format(i[1], '.8f')
+							print u"Ask  | {0}\t| {1}\t| {2}".format(NiceText.colorText(i[0], "depth_ask"), formatAmount, cumulatedasks[icb])
+							icb += 1
+						elif (keyvalue == price):
+							print u"--------------------------------------------------"	
+							print u"Ask  | {0}\t| {1}\t| {2}".format(NiceText.colorText(i[0], "depth_ask"), formatAmount, cumulatedasks[icb])
+							break
+					else:
+						print u"--------------------------------------------------"	
+						print u"n/a  | {0}\t| {1}".format(NiceText.colorText(price, "depth_no"), NiceText.colorText("No amount at given price", "depth_no"))
+						break
+				print u"--------------------------------------------------"
+			elif (steps > 0) and (price > 0):
+			 print u"Not yet implemented. Tell me if you really need this :-)"
+		except:
+			print u"Execution aborted."
+			
+	def __cmd_depth__(self, steps, price=0, cumulate=0):
+		u"Show orderbook (market depth).\nsteps:\t\tNumber of rows to be printed before\n\t\tand after last trade/given price.\nprice:\t\tSpecify price (if not given last trade is assumed).\ncumulate:\tSet to 1 to cumulate amount.\n\t\tWorks only if price is set to 0 (e.g. depth 5 0 1)."
+		try:
+			try:
+				steps = int(steps)
+			except:
+				print u"Argument \"steps\" requires a positive value (integer)."
+				raise Exception
+			try:
+				price = Decimal(price)
+			except:
+				print u"Argument \"price\" requires a positive value (decimal)."
+				raise Exception
+			try:
+				cumulate = int(cumulate)
+			except:
+				print u"Allowed values for argument \"cumulate\" are 0 and 1 (integer)."
+				raise Exception
+			if (price < 0):
+				print u"Argument \"price\" requires a positive value (decimal)."
 			elif (cumulate != 0) and (cumulate != 1):
 				print u"Allowed values for argument \"cumulate\" are 0 and 1."
 			# Show depth in x steps with last trade as starting point
@@ -704,14 +931,16 @@ class GoxSh(object):
 				print u""
 				print u"Type | Price\t| Amount"
 				print u"=================================================="
-				# i[0] -> Price
-				# i[1] -> Amount
 				for i in bids:
+					# i[0] -> Price
+					# i[1] -> Amount
 					print u"Bid  | {0}\t| {1}".format(NiceText.colorText(i[0], "depth_bid"), i[1])
 				print u"--------------------------------------------------"
 				print u"Last | {0}\t|".format(NiceText.colorText(self.__mtgox.get_ticker()[u"last"], "depth_last"))
 				print u"--------------------------------------------------"
 				for i in asks:
+					# i[0] -> Price
+					# i[1] -> Amount
 					print u"Ask  | {0}\t| {1}".format(NiceText.colorText(i[0], "depth_ask"), i[1])					
 				print u"--------------------------------------------------"
 			# Show depth in x steps with given price as starting point	
@@ -780,11 +1009,11 @@ class GoxSh(object):
 				print u""
 				print u"Type | Price\t| Amount (cumulated)"
 				print u"=================================================="
-				# i[0] -> Price
-				# i[1] -> Amount
 				# icb -> Iterator for cumulatedBids[]
 				icb = 0
 				for i in bids:
+					# i[0] -> Price
+					# i[1] -> Amount
 					print u"Bid  | {0}\t| {1}".format(NiceText.colorText(i[0], "depth_bid"), cumulatedBids[icb])
 					icb += 1
 				print u"--------------------------------------------------"
@@ -792,12 +1021,15 @@ class GoxSh(object):
 				print u"--------------------------------------------------"
 				cumulateAsks = 0
 				for i in asks:
+					# i[0] -> Price
+					# i[1] -> Amount
 					cumulateAsks += i[1]
 					print u"Ask  | {0}\t| {1}".format(NiceText.colorText(i[0], "depth_ask"), cumulateAsks)
 					
 				print u"--------------------------------------------------"
+			# Show depth in x steps with given price as starting point and cumulate amount
 			elif (steps) and (price > 0) and (cumulate == 1):
-				print u"Not yet implemented."
+				print u"Cumulation for specific prices is not supported within the depth-command."
 		except:
 			print u"Execution aborted."
 			
