@@ -713,17 +713,19 @@ class GoxSh(object):
 				bids.reverse()
 				cumulatedBids.reverse()
 				print u""
-				print u"Type | Price\t| Amount\t| Sum"
-				print u"=================================================="
+				print u"Type | Price      | Amount         | Sum"
+				print u"==================================================="
 				# icb -> Iterator for cumulatedBids[]
 				icb = 0
 				for i in bids:
 					# i[0] -> Price
 					# i[1] -> Amount
-					formatAmount = format(i[1], '.8f')
-					print u"Bid  | {0}\t| {1}\t| {2}".format(NiceText.colorText(i[0], "depth_bid"), formatAmount, cumulatedBids[icb])
+					formatPrice = str(format(i[0], '.5f')).rjust(10, ' ')
+					formatAmount = str(format(i[1], '.8f')).rjust(14, ' ')
+					formatCumulate = str(format(cumulatedBids[icb], '.8f')).rjust(14, ' ')
+					print u"Bid  | {0} | {1} | {2}".format(NiceText.colorText(formatPrice, "depth_bid"), formatAmount, formatCumulate)
 					icb += 1
-				print u"--------------------------------------------------"
+				print u"---------------------------------------------------"
 			elif (steps > 0) and (price == 0):
 				# Get current bids of order book (aka market depth) as a list
 				bids = list(self.__mtgox.get_depth()[u"bids"])
@@ -742,17 +744,19 @@ class GoxSh(object):
 				bids.reverse()
 				cumulatedBids.reverse()
 				print u""
-				print u"Type | Price\t| Amount\t| Sum"
-				print u"=================================================="
+				print u"Type | Price      | Amount         | Sum"
+				print u"==================================================="
 				# icb -> Iterator for cumulatedBids[]
 				icb = 0
 				for i in bids:
 					# i[0] -> Price
 					# i[1] -> Amount
-					formatAmount = format(i[1], '.8f')
-					print u"Bid  | {0}\t| {1}\t| {2}".format(NiceText.colorText(i[0], "depth_bid"), formatAmount, cumulatedBids[icb])
+					formatPrice = str(format(i[0], '.5f')).rjust(10, ' ')
+					formatAmount = str(format(i[1], '.8f')).rjust(14, ' ')
+					formatCumulate = str(format(cumulatedBids[icb], '.8f')).rjust(14, ' ')
+					print u"Bid  | {0} | {1} | {2}".format(NiceText.colorText(formatPrice, "depth_bid"), formatAmount, formatCumulate)
 					icb += 1
-				print u"--------------------------------------------------"
+				print u"---------------------------------------------------"
 			elif (steps == 0) and (price > 0):
 				# Get current bids of order book (aka market depth) as a list
 				bids = list(self.__mtgox.get_depth()[u"bids"])
@@ -769,28 +773,31 @@ class GoxSh(object):
 				bids.reverse()
 				cumulatedBids.reverse()
 				print u""
-				print u"Type | Price\t| Amount\t| Sum"
-				print u"=================================================="
+				print u"Type | Price      | Amount         | Sum"
+				print u"==================================================="
 				# icb -> Iterator for cumulatedBids[]
 				icb = 0
 				for i in bids:
+					# i[0] -> Price
+					# i[1] -> Amount
+					formatPrice = str(format(i[0], '.5f')).rjust(10, ' ')
+					formatAmount = str(format(i[1], '.8f')).rjust(14, ' ')
+					formatCumulate = str(format(cumulatedBids[icb], '.8f')).rjust(14, ' ')
 					keyvalue = Decimal(str(i[0]))
 					if (keyvalue <= price):
 						if (keyvalue < price):
-							# i[0] -> Price
-							# i[1] -> Amount
-							formatAmount = format(i[1], '.8f')
-							print u"Bid  | {0}\t| {1}\t| {2}".format(NiceText.colorText(i[0], "depth_bid"), formatAmount, cumulatedBids[icb])
+							print u"Bid  | {0} | {1} | {2}".format(NiceText.colorText(formatPrice, "depth_bid"), formatAmount, formatCumulate)
 							icb += 1
 						elif (keyvalue == price):
-							print u"--------------------------------------------------"	
-							print u"Bid  | {0}\t| {1}\t| {2}".format(NiceText.colorText(i[0], "depth_bid"), formatAmount, cumulatedBids[icb])
+							print u"---------------------------------------------------"	
+							print u"Bid  | {0} | {1} | {2}".format(NiceText.colorText(formatPrice, "depth_bid"), formatAmount, formatCumulate)
 							break
 					else:
-						print u"--------------------------------------------------"	
-						print u"n/a  | {0}\t| {1}".format(NiceText.colorText(price, "depth_no"), NiceText.colorText("No amount at given price", "depth_no"))
+						formatPrice = str(format(price, '.5f')).rjust(10, ' ')
+						print u"---------------------------------------------------"	
+						print u"n/a  | {0} | {1}".format(NiceText.colorText(formatPrice, "depth_no"), NiceText.colorText("No amount at given price", "depth_no"))
 						break
-				print u"--------------------------------------------------"
+				print u"---------------------------------------------------"
 			elif (steps > 0) and (price > 0):
 			 print u"Not yet implemented. Tell me if you really need this :-)"
 		except:
@@ -816,85 +823,94 @@ class GoxSh(object):
 				# Get current asks of order book (aka market depth) as a list
 				asks = list(self.__mtgox.get_depth()[u"asks"])
 				# Create empty array cumulatedasks[]
-				cumulatedasks = []
+				cumulatedAsks = []
 				# Set cumulateasks to 0
-				cumulateasks = 0
+				cumulateAsks = 0
 				for i in asks:
-					cumulateasks += i[1]
-					cumulatedasks.append(cumulateasks)
+					cumulateAsks += i[1]
+					cumulatedAsks.append(cumulateAsks)
 				print u""
-				print u"Type | Price\t| Amount\t| Sum"
-				print u"=================================================="
+				print u"Type | Price      | Amount         | Sum"
+				print u"==================================================="
 				# icb -> Iterator for cumulatedasks[]
 				icb = 0
 				for i in asks:
 					# i[0] -> Price
 					# i[1] -> Amount
-					formatAmount = format(i[1], '.8f')
-					print u"Ask  | {0}\t| {1}\t| {2}".format(NiceText.colorText(i[0], "depth_ask"), formatAmount, cumulatedasks[icb])
+					formatPrice = str(format(i[0], '.5f')).rjust(10, ' ')
+					formatAmount = str(format(i[1], '.8f')).rjust(14, ' ')
+					formatCumulate = str(format(cumulatedAsks[icb], '.8f')).rjust(14, ' ')
+					print u"Ask  | {0} | {1} | {2}".format(NiceText.colorText(formatPrice, "depth_ask"), formatAmount, formatCumulate)
 					icb += 1
-				print u"--------------------------------------------------"
+				print u"---------------------------------------------------"
 			elif (steps > 0) and (price == 0):
 				# Get current asks of order book (aka market depth) as a list
 				asks = list(self.__mtgox.get_depth()[u"asks"])
 				# Create empty array cumulatedasks[]
-				cumulatedasks = []
+				cumulatedAsks = []
 				# Set cumulateasks to 0
-				cumulateasks = 0
+				cumulateAsks = 0
 				# Get x steps of asks only
 				asks = asks[:steps]
 				for i in asks:
-					cumulateasks += i[1]
-					cumulatedasks.append(cumulateasks)
+					cumulateAsks += i[1]
+					cumulatedAsks.append(cumulateAsks)
 				print u""
-				print u"Type | Price\t| Amount\t| Sum"
-				print u"=================================================="
+				print u"Type | Price      | Amount         | Sum"
+				print u"==================================================="
 				# icb -> Iterator for cumulatedasks[]
 				icb = 0
 				for i in asks:
 					# i[0] -> Price
 					# i[1] -> Amount
-					formatAmount = format(i[1], '.8f')
-					print u"Ask  | {0}\t| {1}\t| {2}".format(NiceText.colorText(i[0], "depth_ask"), formatAmount, cumulatedasks[icb])
+					formatPrice = str(format(i[0], '.5f')).rjust(10, ' ')
+					formatAmount = str(format(i[1], '.8f')).rjust(14, ' ')
+					formatCumulate = str(format(cumulatedAsks[icb], '.8f')).rjust(14, ' ')
+					print u"Ask  | {0} | {1} | {2}".format(NiceText.colorText(formatPrice, "depth_ask"), formatAmount, formatCumulate)
 					icb += 1
-				print u"--------------------------------------------------"
+				print u"---------------------------------------------------"
 			elif (steps == 0) and (price > 0):
 				# Get current asks of order book (aka market depth) as a list
 				asks = list(self.__mtgox.get_depth()[u"asks"])
 				# Create empty array cumulatedasks[]
-				cumulatedasks = []
+				cumulatedAsks = []
 				# Set cumulateasks to 0
-				cumulateasks = 0
+				cumulateAsks = 0
 				for i in asks:
-					cumulateasks += i[1]
-					cumulatedasks.append(cumulateasks)
+					cumulateAsks += i[1]
+					cumulatedAsks.append(cumulateAsks)
 				print u""
-				print u"Type | Price\t| Amount\t| Sum"
-				print u"=================================================="
+				print u"Type | Price      | Amount         | Sum"
+				print u"==================================================="
 				# icb -> Iterator for cumulatedasks[]
 				icb = 0
 				for i in asks:
+					# i[0] -> Price
+					# i[1] -> Amount
+					formatPrice = str(format(i[0], '.5f')).rjust(10, ' ')
+					formatAmount = str(format(i[1], '.8f')).rjust(14, ' ')
+					formatCumulate = str(format(cumulatedAsks[icb], '.8f')).rjust(14, ' ')
 					keyvalue = Decimal(str(i[0]))
 					if (keyvalue <= price):
 						if (keyvalue < price):
-							# i[0] -> Price
-							# i[1] -> Amount
-							formatAmount = format(i[1], '.8f')
-							print u"Ask  | {0}\t| {1}\t| {2}".format(NiceText.colorText(i[0], "depth_ask"), formatAmount, cumulatedasks[icb])
+							print u"Ask  | {0} | {1} | {2}".format(NiceText.colorText(formatPrice, "depth_ask"), formatAmount, formatCumulate)
 							icb += 1
 						elif (keyvalue == price):
-							print u"--------------------------------------------------"	
-							print u"Ask  | {0}\t| {1}\t| {2}".format(NiceText.colorText(i[0], "depth_ask"), formatAmount, cumulatedasks[icb])
+							print u"---------------------------------------------------"	
+							print u"Ask  | {0} | {1} | {2}".format(NiceText.colorText(formatPrice, "depth_ask"), formatAmount, formatCumulate)
 							break
 					else:
-						print u"--------------------------------------------------"	
-						print u"n/a  | {0}\t| {1}".format(NiceText.colorText(price, "depth_no"), NiceText.colorText("No amount at given price", "depth_no"))
+						formatPrice = str(format(price, '.5f')).rjust(10, ' ')
+						print u"---------------------------------------------------"	
+						print u"n/a  | {0} | {1}".format(NiceText.colorText(formatPrice, "depth_no"), NiceText.colorText("No amount at given price", "depth_no"))
 						break
-				print u"--------------------------------------------------"
+				print u"---------------------------------------------------"
 			elif (steps > 0) and (price > 0):
 			 print u"Not yet implemented. Tell me if you really need this :-)"
-		except:
-			print u"Execution aborted."
+		#except:
+		#	print u"Execution aborted."
+		except Exception, e:
+			print e
 			
 	def __cmd_depth__(self, steps, price=0, cumulate=0):
 		u"Show orderbook (market depth).\nsteps:\t\tNumber of rows to be printed before\n\t\tand after last trade/given price.\nprice:\t\tSpecify price (if not given last trade is assumed).\ncumulate:\tSet to 1 to cumulate amount.\n\t\tWorks only if price is set to 0 (e.g. depth 5 0 1)."
@@ -929,20 +945,25 @@ class GoxSh(object):
 				# Get x steps of asks only
 				asks = asks[:steps]
 				print u""
-				print u"Type | Price\t| Amount"
-				print u"=================================================="
+				print u"Type | Price      | Amount"
+				print u"==================================================="
 				for i in bids:
 					# i[0] -> Price
 					# i[1] -> Amount
-					print u"Bid  | {0}\t| {1}".format(NiceText.colorText(i[0], "depth_bid"), i[1])
-				print u"--------------------------------------------------"
-				print u"Last | {0}\t|".format(NiceText.colorText(self.__mtgox.get_ticker()[u"last"], "depth_last"))
-				print u"--------------------------------------------------"
+					formatPrice = str(format(i[0], '.5f')).rjust(10, ' ')
+					formatAmount = str(format(i[1], '.8f')).rjust(14, ' ')
+					print u"Bid  | {0} | {1}".format(NiceText.colorText(formatPrice, "depth_bid"), formatAmount)
+				print u"---------------------------------------------------"
+				formatLast = str(format(self.__mtgox.get_ticker()[u"last"], '.5f')).rjust(10, ' ')
+				print u"Last | {0} |".format(NiceText.colorText(formatLast, "depth_last"))
+				print u"---------------------------------------------------"
 				for i in asks:
 					# i[0] -> Price
 					# i[1] -> Amount
-					print u"Ask  | {0}\t| {1}".format(NiceText.colorText(i[0], "depth_ask"), i[1])					
-				print u"--------------------------------------------------"
+					formatPrice = str(format(i[0], '.5f')).rjust(10, ' ')
+					formatAmount = str(format(i[1], '.8f')).rjust(14, ' ')
+					print u"Ask  | {0} | {1}".format(NiceText.colorText(formatPrice, "depth_ask"), formatAmount)
+				print u"---------------------------------------------------"
 			# Show depth in x steps with given price as starting point	
 			elif (steps) and (price > 0) and (cumulate == 0):
 				# Get current bids of order book (aka market depth) as a dict
@@ -956,34 +977,48 @@ class GoxSh(object):
 				ia = 1
 				ib = 1
 				print u""
-				print u"Type | Price\t| Amount"
-				print u"=================================================="			
+				print u"Type | Price      | Amount"
+				print u"==================================================="			
 				for key in sorted(depth.iterkeys(), reverse=True):
+					# key -> Price
+					# depth[key] -> Amount
 					keyvalue = Decimal(str(key))
 					if (keyvalue < price) and (ia <= steps):
 						if key in bids:
-							print u"Bid  | {0}\t| {1}".format(NiceText.colorText(key, "depth_bid"), NiceText.colorText(depth[key], "depth_bid"))
+							formatPrice = str(format(key, '.5f')).rjust(10, ' ')
+							formatAmount = str(format(depth[key], '.8f')).rjust(14, ' ')
+							print u"Bid  | {0} | {1}".format(NiceText.colorText(formatPrice, "depth_bid"), NiceText.colorText(formatAmount, "depth_bid"))
 						elif key in asks:
-							print u"Ask  | {0}\t| {1}".format(NiceText.colorText(key, "depth_ask"), NiceText.colorText(depth[key], "depth_ask"))
+							formatPrice = str(format(key, '.5f')).rjust(10, ' ')
+							formatAmount = str(format(depth[key], '.8f')).rjust(14, ' ')
+							print u"Ask  | {0} | {1}".format(NiceText.colorText(formatPrice, "depth_ask"), NiceText.colorText(formatAmount, "depth_ask"))
 						ia += 1
-				print u"--------------------------------------------------"					
+				print u"---------------------------------------------------"					
 				if (price in depth):
 					if price in bids:
-						print u"Bid  | {0}\t| {1}".format(NiceText.colorText(price, "depth_bid"), NiceText.colorText(depth[price], "depth_bid"))
+						formatPrice = str(format(price, '.5f')).rjust(10, ' ')
+						formatAmount = str(format(depth[price], '.8f')).rjust(14, ' ')
+						print u"Bid  | {0} | {1}".format(NiceText.colorText(formatPrice, "depth_bid"), NiceText.colorText(formatAmount, "depth_bid"))
 					elif price in asks:
-						print u"Ask  | {0}\t| {1}".format(NiceText.colorText(price, "depth_ask"), NiceText.colorText(depth[price], "depth_ask"))
+						formatPrice = str(format(price, '.5f')).rjust(10, ' ')
+						formatAmount = str(format(depth[price], '.8f')).rjust(14, ' ')
+						print u"Ask  | {0} | {1}".format(NiceText.colorText(formatPrice, "depth_ask"), NiceText.colorText(formatAmount, "depth_ask"))
 				else:
 					print u"n/a  | {0}\t| {1}".format(NiceText.colorText(price, "depth_no"), NiceText.colorText("No amount at given price", "depth_no"))
-				print u"--------------------------------------------------"	
+				print u"---------------------------------------------------"	
 				for key in sorted(depth.iterkeys()):
 					keyvalue = Decimal(str(key))
 					if (keyvalue > price) and (ib <= steps):
 						if key in bids:
-							print u"Bid  | {0}\t| {1}".format(NiceText.colorText(key, "depth_bid"), NiceText.colorText(depth[key], "depth_bid"))
+							formatPrice = str(format(key, '.5f')).rjust(10, ' ')
+							formatAmount = str(format(depth[key], '.8f')).rjust(14, ' ')
+							print u"Bid  | {0} | {1}".format(NiceText.colorText(formatPrice, "depth_bid"), NiceText.colorText(formatAmount, "depth_bid"))
 						elif key in asks:
-							print u"Ask  | {0}\t| {1}".format(NiceText.colorText(key, "depth_ask"), NiceText.colorText(depth[key], "depth_ask"))
+							formatPrice = str(format(key, '.5f')).rjust(10, ' ')
+							formatAmount = str(format(depth[key], '.8f')).rjust(14, ' ')
+							print u"Ask  | {0} | {1}".format(NiceText.colorText(formatPrice, "depth_ask"), NiceText.colorText(formatAmount, "depth_ask"))
 						ib += 1
-				print u"--------------------------------------------------"	
+				print u"---------------------------------------------------"	
 			# Show depth in x steps with last trade as starting point and cumulate amount
 			elif (steps) and (price == 0) and (cumulate == 1):
 				# Get current bids of order book (aka market depth) as a list
@@ -1007,26 +1042,30 @@ class GoxSh(object):
 				# Get x steps of asks only
 				asks = asks[:steps]
 				print u""
-				print u"Type | Price\t| Amount (cumulated)"
-				print u"=================================================="
+				print u"Type | Price      | Amount (cumulated)"
+				print u"==================================================="
 				# icb -> Iterator for cumulatedBids[]
 				icb = 0
 				for i in bids:
 					# i[0] -> Price
 					# i[1] -> Amount
-					print u"Bid  | {0}\t| {1}".format(NiceText.colorText(i[0], "depth_bid"), cumulatedBids[icb])
+					formatPrice = str(format(i[0], '.5f')).rjust(10, ' ')
+					formatCumulate = str(format(cumulatedBids[icb], '.8f')).rjust(14, ' ')
+					print u"Bid  | {0} | {1}".format(NiceText.colorText(formatPrice, "depth_bid"), formatCumulate)
 					icb += 1
-				print u"--------------------------------------------------"
-				print u"Last | {0}\t|".format(NiceText.colorText(self.__mtgox.get_ticker()[u"last"], "depth_last"))
-				print u"--------------------------------------------------"
+				print u"---------------------------------------------------"
+				formatLast = str(format(self.__mtgox.get_ticker()[u"last"], '.5f')).rjust(10, ' ')
+				print u"Last | {0} |".format(NiceText.colorText(formatLast, "depth_last"))
+				print u"---------------------------------------------------"
 				cumulateAsks = 0
 				for i in asks:
 					# i[0] -> Price
 					# i[1] -> Amount
+					formatPrice = str(format(i[0], '.5f')).rjust(10, ' ')
 					cumulateAsks += i[1]
-					print u"Ask  | {0}\t| {1}".format(NiceText.colorText(i[0], "depth_ask"), cumulateAsks)
-					
-				print u"--------------------------------------------------"
+					formatCumulate = str(format(cumulateAsks, '.8f')).rjust(14, ' ')
+					print u"Ask  | {0} | {1}".format(NiceText.colorText(formatPrice, "depth_ask"), formatCumulate)		
+				print u"---------------------------------------------------"
 			# Show depth in x steps with given price as starting point and cumulate amount
 			elif (steps) and (price > 0) and (cumulate == 1):
 				print u"Cumulation for specific prices is not supported within the depth-command."
