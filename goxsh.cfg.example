@@ -33,24 +33,18 @@ ticker_vol  = default
 
 ## Set orders colors
 # sell orders
-orders_selltimebrackets = default
 orders_selltime         = default
 orders_sellkind         = default
 orders_selloid          = default
 orders_sellamount       = default
 orders_sellprice        = default
-orders_sellcurrsymbol   = default
-orders_sellATsymbol     = default
 
 # buy orders
-orders_buytimebrackets = default
 orders_buytime         = default
 orders_buykind         = default
 orders_buyoid          = default
 orders_buyamount       = default
 orders_buyprice        = default
-orders_buycurrsymbol   = default
-orders_buyATsymbol     = default
 
 ## Set balance colors
 balance_btcsymbol = default
@@ -73,8 +67,10 @@ depth_last = yellow
 depth_no   = yellow
 
 ## Set basic shell colors
-shell_user = cyan
-shell_self = cyan
+shell_user     = cyan
+shell_self     = cyan
+shell_help_cmd = magenta
+shell_help_arg = magenta
 
 ### Set ANSI values
 ### No need of touching these :-)

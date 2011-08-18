@@ -30,6 +30,7 @@ import hmac
 import hashlib
 import time
 
+
 # Set config file
 cfgFile = "goxsh.cfg"
 
@@ -123,6 +124,9 @@ class MtGox(object):
 			u"app": appkey
 		}, auth = False)
 		
+	def get_btcaddress(self):
+		return self.__get_json("btcAddress.php")
+		
 	def buy(self, amount, price):
 		return self.__get_json("buyBTC.php", params = {
 			u"amount": amount,
@@ -153,12 +157,32 @@ class MtGox(object):
 			u"price": price
 		})
 	
-	def withdraw(self, address, amount):
-		return self.__get_json("withdraw.php", params = {
-			u"group1": u"BTC",
-			u"btca": address,
-			u"amount": amount
-		})
+	#def withdraw(self, address, amount):
+	def withdraw(self, currency, destination, amount, account):
+		if (currency == "btc") and (destination == "btc"):
+			return self.__get_json("withdraw.php", params = {
+				u"group1": u"BTC",
+				u"btca": account,
+				u"amount": amount
+			})
+		elif (currency == "usd") and (destination == "dwolla"):
+			return self.__get_json("withdraw.php", params = {
+				u"group1": u"DWUSD",
+				u"dwaccount": account,
+				u"amount": amount
+			})
+		elif (currency == "usd") and (destination == "lr"):
+			return self.__get_json("withdraw.php", params = {
+				u"group1": u"USD",
+				u"account": account,
+				u"amount": amount
+			})
+		elif (currency == "usd") and (destination == "paxum"):
+			return self.__get_json("withdraw.php", params = {
+				u"group1": u"PAXUMUSD",
+				u"paxumaccount": account,
+				u"amount": amount
+			})
 		
 	def get_commission(self):
 		return self.__get_json("info.php")[u"Trade_Fee"]
@@ -305,7 +329,7 @@ class GoxSh(object):
 			raw_line = None
 			try:
 				text = u"{userName}{prompt} ".format(userName=NiceText.colorText(self.__mtgox.get_username() or u'', "shell_user"),
-				                                     prompt  =NiceText.colorText(u'$', "shell_self"))
+                                                     prompt  =NiceText.colorText(u' $', "shell_self") if self.__mtgox.get_username() else NiceText.colorText(u'$', "shell_self"))
 
 				line = raw_input(text).decode(self.__encoding)
 			except EOFError, e:
@@ -365,7 +389,7 @@ class GoxSh(object):
 	def __print_cmd_info(self, cmd):
 		proc = self.__get_cmd_proc(cmd)
 		if proc:
-			print cmd,
+			print u"{0}".format(NiceText.colorText(cmd, "shell_help_cmd")),
 			argspec = inspect.getargspec(proc)
 			args = argspec.args[1:]
 			if argspec.defaults:
@@ -375,11 +399,13 @@ class GoxSh(object):
 					i -= 1
 			for arg in args:
 				if not isinstance(arg, tuple):
-					print arg,
+					print u"{0}".format(NiceText.colorText(arg, "shell_help_arg")),
 				elif len(arg) == 2:
-					print u"[{0}={1}]".format(*arg),
+					printarg = "[{0}={1}]".format(*arg)
+					print u"{0}".format(NiceText.colorText(printarg, "shell_help_arg")),
 				else:
-					print u"[{0}]".format(arg[0]),
+					#print u"[{0}]".format(arg[0]),
+					print u"[{0}]".format(NiceText.colorText(arg[0], "shell_help_cmd")),
 			if argspec.varargs:
 				print u"[...]",
 			print
@@ -416,15 +442,24 @@ class GoxSh(object):
 		for status in statuses:
 			print status
 		if u"orders" in ex_result:
+			self.__print_order_header()
 			for order in ex_result[u"orders"]:
 				self.__print_order(order)
 	
 	def __print_balance(self, balance):
-		print u"{btcSymbol}\t{btcBalance}".format(btcSymbol =NiceText.colorText("BTC:",           "balance_btcsymbol"),
-		                                          btcBalance=NiceText.colorText(balance[u"btcs"], "balance_btcamount"))
-		print u"{usdSymbol}\t{usdBalance}".format(usdSymbol =NiceText.colorText("USD:",           "balance_usdsymbol"),
-		                                          usdBalance=NiceText.colorText(balance[u"usds"], "balance_usdamount"))
+		btc = str(format(Decimal(balance[u"btcs"]), '.8f')).rjust(14, ' ')
+		usd = str(format(Decimal(balance[u"usds"]), '.8f')).rjust(14, ' ')
+		print u"{btcSymbol} {btcBalance}".format(btcSymbol =NiceText.colorText("BTC:",           "balance_btcsymbol"),
+		                                          btcBalance=NiceText.colorText(btc, "balance_btcamount"))
+		print u"{usdSymbol} {usdBalance}".format(usdSymbol =NiceText.colorText("USD:",           "balance_usdsymbol"),
+		                                          usdBalance=NiceText.colorText(usd, "balance_usdamount"))
 	
+	def __print_order_header(self):
+		print u""	
+		print u"Kind |       BTC      | ID"
+		print u"     |       USD      | Date (status)"
+		print u"============================================================"
+		
 	def __print_order(self, order):
 		kind = {1: u"sell", 2: u"buy"}[order[u"type"]]
 		timestamp = datetime.fromtimestamp(int(order[u"date"])).strftime("%Y-%m-%d %H:%M:%S")
@@ -432,31 +467,28 @@ class GoxSh(object):
 		# Append status to orders
 		properties.append(order[u"real_status"])
 		if kind == u"sell":
-			print "{lb}{timeStamp}{rb} {kind}\t{oid}\t{sellAmnt}{btc} {at} {sellPrice}{usd}{props}".format(
-				lb       =NiceText.colorText("[",              "orders_selltimebrackets"),
-				timeStamp=NiceText.colorText(timestamp,        "orders_selltime"),
-				rb       =NiceText.colorText("]",              "orders_selltimebrackets"),
+			btc = str(format(Decimal(order[u"amount"]), '.8f')).rjust(14, ' ')
+			usd = str(format(Decimal(order[u"price"]), '.8f')).rjust(14, ' ')
+			print "{kind} | {sellAmnt} | {oid}".format(
 				kind     =NiceText.colorText(kind,             "orders_sellkind"),
-				oid      =NiceText.colorText(order[u'oid'],    "orders_selloid"),
-				sellAmnt =NiceText.colorText(order[u'amount'], "orders_sellamount"),
-				btc      =NiceText.colorText("BTC",            "orders_sellcurrysymbol"),
-				at       =NiceText.colorText("@",              "orders_sellATsymbol"),
-				sellPrice=NiceText.colorText(order[u"price"],  "orders_sellprice"),
-				usd      =NiceText.colorText("USD",            "orders_sellcurrysymbol"),
-				props    =" (" + ",".join(properties) + ")" if properties else "")
-		elif kind == u"buy":
-			print "{lb}{timeStamp}{rb} {kind}\t{oid}\t{buyAmnt}{btc} {at} {buyPrice}{usd}{props}".format(
-				lb       =NiceText.colorText("[",              "orders_buytimebrackets"),
-				timeStamp=NiceText.colorText(timestamp,        "orders_buytime"), 
-				rb       =NiceText.colorText("]",              "orders_buytimebrackets"), 
-				kind     =NiceText.colorText(kind,             "orders_buykind"), 
-				oid      =NiceText.colorText(order[u"oid"],    "orders_buyoid"), 
-				buyAmnt  =NiceText.colorText(order[u"amount"], "orders_buyamount"), 
-				btc      =NiceText.colorText("BTC",            "orders_buycurrsymbol"), 
-				at       =NiceText.colorText("@",              "orders_buyATsymbol"), 
-				buyPrice =NiceText.colorText(order[u"price"],  "orders_buyprice"), 
-				usd      =NiceText.colorText("USD",            "orders_buycurrsymbol"), 
+				sellAmnt  =NiceText.colorText(btc,             "orders_sellamount"), 
+				oid      =NiceText.colorText(order[u"oid"],    "orders_selloid"))
+			print "     | {sellPrice} | {timeStamp}{props}".format(
+				sellPrice =NiceText.colorText(usd,             "orders_sellprice"), 
+				timeStamp=NiceText.colorText(timestamp,        "orders_selltime"),
 				props    =" (" + ", ".join(properties) + ")" if properties else "")
+		elif kind == u"buy":
+			btc = str(format(Decimal(order[u"amount"]), '.8f')).rjust(14, ' ')
+			usd = str(format(Decimal(order[u"price"]), '.8f')).rjust(14, ' ')
+			print "{kind}  | {buyAmnt} | {oid}".format(
+				kind     =NiceText.colorText(kind,             "orders_buykind"),
+				buyAmnt  =NiceText.colorText(btc,              "orders_buyamount"), 
+				oid      =NiceText.colorText(order[u"oid"],    "orders_buyoid"))
+			print "     | {buyPrice} | {timeStamp}{props}".format(
+				buyPrice =NiceText.colorText(usd,              "orders_buyprice"), 
+				timeStamp=NiceText.colorText(timestamp,        "orders_buytime"),
+				props    =" (" + ", ".join(properties) + ")" if properties else "")
+		print u"------------------------------------------------------------"
 		
 	def __unknown(self, cmd):
 		def __unknown_1(*args):
@@ -466,9 +498,16 @@ class GoxSh(object):
 	def __cmd_balance__(self):
 		u"Display account balance."
 		self.__print_balance(self.__mtgox.get_balance())
-	
+		
+	def __cmd_deposit__(self):
+		u"Get a Bitcoin deposit address for your account."
+		address = self.__mtgox.get_btcaddress()[u"addr"]
+		print u"Deposit to: {0}".format(address)
+		
 	def __cmd_buy__(self, amount, price):
-		u"Buy bitcoins.\nPrefix the amount with a '$' to spend that many USD and calculate BTC amount\nautomatically."
+		u"Buy bitcoins.\n" \
+		 "Prefix the amount with a '$' to spend that many USD\n" \
+		  "and calculate BTC amount automatically."
 		self.__exchange(self.__mtgox.buy, amount, price)
 	
 	def __cmd_cancel__(self, kind, order_id):
@@ -478,6 +517,7 @@ class GoxSh(object):
 			orders = self.__mtgox.cancel_order(num_kind, order_id)
 			print u"Canceled {0} {1}.".format(kind, order_id)
 			if orders:
+				self.__print_order_header()
 				for order in orders:
 					self.__print_order(order)
 			else:
@@ -490,7 +530,8 @@ class GoxSh(object):
 		raise EOFError()
 	
 	def __cmd_help__(self, command = None):
-		u"Show help for the specified command or list all commands if none is given."
+		u"Show help for the specified command or\n" \
+		 "list all commands if none is given."
 		if not command:
 			cmds = self.__get_cmds()
 		else:
@@ -544,11 +585,13 @@ class GoxSh(object):
 			print u"Not logged in."
 	
 	def __cmd_orders__(self, kind = None):
-		u"List open orders.\nSpecifying a kind (buy or sell) will list only orders of that kind."
+		u"List open orders.\n" \
+		 "Specifying a kind (buy or sell) will list only orders of that kind."
 		try:
 			num_kind = {None: None, u"sell": 1, u"buy": 2}[kind]
 			orders = self.__mtgox.get_orders()
 			if orders:
+				self.__print_order_header()
 				for order in orders:
 					if num_kind in (None, order[u"type"]):
 						self.__print_order(order)
@@ -558,7 +601,8 @@ class GoxSh(object):
 			raise CommandError(u"{0}: Invalid order kind.".format(kind))
 	
 	def __cmd_profit__(self, price):
-		u"Calculate profitable short/long prices for a given initial price, taking\ninto account Mt. Gox's commission fee."
+		u"Calculate profitable short/long prices for a given initial price,\n" \
+		 "taking into account Mt. Gox's commission fee."
 		try:
 			# Get Mt. Gox trading fee (in %) and devide it by 100 to get it in decimal
 			self.__mtgox_commission = Decimal(str(self.__mtgox.get_commission()))/100
@@ -568,35 +612,48 @@ class GoxSh(object):
 			min_profitable_ratio = (1 - self.__mtgox_commission)**(-2)
 			short_value = (dec_price / min_profitable_ratio).quantize(self.__usd_precision, ROUND_DOWN)
 			long_value  = (dec_price * min_profitable_ratio).quantize(self.__usd_precision, ROUND_UP)
-			print u"{short}\t{shortSign} {value}".format(
+			short_value = str(format(short_value, '.5f')).rjust(10, ' ')
+			long_value = str(format(long_value, '.5f')).rjust(10, ' ')
+			print u"{short} {shortSign} {value}".format(
 				short    =NiceText.colorText("Short:",    "profit_shorttext"),
 				shortSign=NiceText.colorText("<",         "profit_shortsign"),
 				value    =NiceText.colorText(short_value, "profit_shortvalue"))
-			print u"{long}\t{longSign} {value}".format(
+			print u"{long}  {longSign} {value}".format(
 				long     =NiceText.colorText("Long:",     "profit_longtext"),
 				longSign =NiceText.colorText(">",         "profit_longsign"),
 				value    =NiceText.colorText(long_value,  "profit_longvalue"))
-
 		except InvalidOperation:
 			raise CommandError(u"{0}: Invalid price.".format(price))
 	
 	def __cmd_sell__(self, amount, price):
-		u"Sell bitcoins.\nPrefix the amount with a '$' to receive that many USD and calculate BTC\namount automatically."
+		u"Sell bitcoins.\n" \
+		 "Prefix the amount with a '$' to receive that many USD\n" \
+		 "and calculate BTC amount automatically."
 		self.__exchange(self.__mtgox.sell, amount, price)
 
 	def __cmd_ticker__(self):
 		u"Display ticker."
 		ticker = self.__mtgox.get_ticker()
-		print u"Last:\t{0}".format(NiceText.colorText(ticker[u"last"], "ticker_last"))
-		print u"Buy:\t{0}".format(NiceText.colorText(ticker[u"buy"], "ticker_buy"))
-		print u"Sell:\t{0}".format(NiceText.colorText(ticker[u"sell"], "ticker_sell"))
-		print u"High:\t{0}".format(NiceText.colorText(ticker[u"high"], "ticker_high"))
-		print u"Low:\t{0}".format(NiceText.colorText(ticker[u"low"], "ticker_low"))
-		print u"Volume:\t{0}".format(NiceText.colorText(ticker[u"vol"], "ticker_vol"))
+		last = str(format(ticker[u"last"], '.5f')).rjust(10, ' ')
+		buy = str(format(ticker[u"buy"], '.5f')).rjust(10, ' ')
+		sell = str(format(ticker[u"sell"], '.5f')).rjust(10, ' ')
+		high = str(format(ticker[u"high"], '.5f')).rjust(10, ' ')
+		low = str(format(ticker[u"low"], '.5f')).rjust(10, ' ')
+		vol = str(ticker[u"vol"]).rjust(10, ' ')
+		print u"Last: {0}".format(NiceText.colorText(last, "ticker_last"))
+		print u" Buy: {0}".format(NiceText.colorText(buy, "ticker_buy"))
+		print u"Sell: {0}".format(NiceText.colorText(sell, "ticker_sell"))
+		print u"High: {0}".format(NiceText.colorText(high, "ticker_high"))
+		print u" Low: {0}".format(NiceText.colorText(low, "ticker_low"))
+		print u"Vol.: {0}".format(NiceText.colorText(vol, "ticker_vol"))
 
-	def __cmd_withdraw__(self, address, amount):
-		u"Withdraw bitcoins."
-		withdraw_info = self.__mtgox.withdraw(address, amount)
+	def __cmd_withdraw__(self, currency, destination, amount, account):
+		u"Withdraw Bitcoins or Dollars.\n" \
+		 "currency:    usd or btc\n" \
+		 "destination: btc, dwolla, lr (Liberty Reserve) and paxum\n" \
+		 "amount:      amount to withdraw (in decimal)\n" \
+		 "account:     btc-address, dwolla-account, LR-account or Paxum account"
+		withdraw_info = self.__mtgox.withdraw(currency, destination, amount, account)		 
 		print withdraw_info[u"status"]
 		print u"Updated balance:"
 		# replaced self.__print_balance(withdraw_info) by:
@@ -682,7 +739,11 @@ class GoxSh(object):
 		config = cfgp.readCfg()
 	
 	def __cmd_bids__(self, steps=0, price=0):
-		u"Show orderbook (market depth) - bids side.\nsteps:\tNumber of rows to be printed.\n\tIf set to 0 all bids of orderbook are printed.\nprice:\tSpecify price to start with. If not given/set to 0\n\tit starts with first bid."
+		u"Show orderbook (market depth) - bids side.\n" \
+		 "steps: Number of rows to be printed.\n" \
+		 "       If set to 0 all bids of orderbook are printed.\n" \
+		 "price: Specify price to start with. If not given/set to 0\n" \
+		 "       it starts with first bid."
 		try:
 			try:
 				steps = int(steps)
@@ -804,7 +865,11 @@ class GoxSh(object):
 			print u"Execution aborted."
 			
 	def __cmd_asks__(self, steps=0, price=0):
-		u"Show orderbook (market depth) - asks side.\nsteps:\tNumber of rows to be printed.\n\tIf set to 0 all asks of orderbook are printed.\nprice:\tSpecify price to start with. If not given/set to 0\n\tit starts with first ask."
+		u"Show orderbook (market depth) - asks side.\n" \
+		 "steps: Number of rows to be printed.\n" \
+		 "       If set to 0 all asks of orderbook are printed.\n" \
+		 "price: Specify price to start with. If not given/set to 0\n" \
+		 "       it starts with first ask."
 		try:
 			try:
 				steps = int(steps)
@@ -907,13 +972,16 @@ class GoxSh(object):
 				print u"---------------------------------------------------"
 			elif (steps > 0) and (price > 0):
 			 print u"Not yet implemented. Tell me if you really need this :-)"
-		#except:
-		#	print u"Execution aborted."
-		except Exception, e:
-			print e
+		except:
+			print u"Execution aborted."
 			
 	def __cmd_depth__(self, steps, price=0, cumulate=0):
-		u"Show orderbook (market depth).\nsteps:\t\tNumber of rows to be printed before\n\t\tand after last trade/given price.\nprice:\t\tSpecify price (if not given last trade is assumed).\ncumulate:\tSet to 1 to cumulate amount.\n\t\tWorks only if price is set to 0 (e.g. depth 5 0 1)."
+		u"Show orderbook (market depth).\n" \
+		 "steps:    Number of rows to be printed before\n" \
+		 "          and after last trade/given price.\n" \
+		 "price:    Specify price (if not given last trade is assumed).\n" \
+		 "cumulate: Set to 1 to cumulate amount.\n" \
+		 "          Works only if price is set to 0 (e.g. depth 5 0 1)."
 		try:
 			try:
 				steps = int(steps)
